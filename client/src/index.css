@@ -1,0 +1,172 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: #0B1120;
+    color: #F8FAFC;
+    font-family: 'Inter', 'DM Mono', system-ui, sans-serif;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', 'Syne', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #131B2E;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1E293B;
+    border-radius: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-2xl p-5 transition-colors duration-200;
+  }
+  .card:hover {
+    border-color: #2D3B52;
+  }
+
+  .btn-primary {
+    @apply px-5 py-2.5 rounded-xl font-display font-semibold text-sm transition-all duration-200;
+    background: linear-gradient(135deg, #14B8A6, #8B5CF6);
+    color: #0B1120;
+  }
+  .btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(20, 184, 166, 0.2);
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-xl font-display font-medium text-sm text-text-muted border border-border transition-all duration-200;
+  }
+  .btn-ghost:hover {
+    border-color: #14B8A6;
+    color: #14B8A6;
+  }
+
+  .score-green { color: #22C55E; }
+  .score-yellow { color: #FBBF24; }
+  .score-red { color: #F87171; }
+
+  .pillar-physical { color: #22C55E; }
+  .pillar-mental { color: #60A5FA; }
+  .pillar-financial { color: #FBBF24; }
+  .pillar-spiritual { color: #C084FC; }
+  .pillar-social { color: #F472B6; }
+  .pillar-purpose { color: #F97316; }
+  .pillar-awareness { color: #14B8A6; }
+
+  .pill-info { @apply bg-blue-900/30 text-blue-300 border border-blue-800/50; }
+  .pill-warning { @apply bg-amber-900/30 text-amber-300 border border-amber-800/50; }
+  .pill-insight { @apply bg-purple-900/30 text-purple-300 border border-purple-800/50; }
+
+  /* Soft glow accent for AI insight moments */
+  .glow-teal {
+    box-shadow: 0 0 20px rgba(20, 184, 166, 0.08), 0 0 40px rgba(20, 184, 166, 0.04);
+  }
+  .glow-violet {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.08), 0 0 40px rgba(139, 92, 246, 0.04);
+  }
+
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .slide-up {
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* Markdown digest styling */
+.digest-content h2 {
+  font-family: 'Inter', 'Syne', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #F8FAFC;
+}
+.digest-content p {
+  color: #94A3B8;
+  line-height: 1.7;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+.digest-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem 0;
+}
+.digest-content li {
+  color: #94A3B8;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  padding-left: 1rem;
+  position: relative;
+}
+.digest-content li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: #64748B;
+}
+
+/* Range slider styling */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: #1E293B;
+  outline: none;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #14B8A6;
+  cursor: pointer;
+  border: 2px solid #0B1120;
+  transition: transform 0.15s ease;
+}
+input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 8px rgba(20, 184, 166, 0.3);
+}
+
+/* Select & date input styling for dark mode */
+select, input[type='date'], input[type='time'] {
+  color-scheme: dark;
+}

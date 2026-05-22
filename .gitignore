@@ -1,0 +1,13 @@
+node_modules/
+client/node_modules/
+.env
+.env.local
+token.json
+credentials.json
+*.db
+*.sqlite
+*.db.lock
+dist/
+client/dist/
+uploads/
+.vercel/
