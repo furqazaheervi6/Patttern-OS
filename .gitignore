@@ -2,6 +2,7 @@ node_modules/
 client/node_modules/
 .env
 .env.local
+.env.vercel
 token.json
 credentials.json
 *.db
@@ -11,3 +12,5 @@ dist/
 client/dist/
 uploads/
 .vercel/
+
+.vercel

@@ -11,16 +11,60 @@ if (!connectionString) {
     '   Set SUPABASE_DATABASE_URL or DATABASE_URL in your environment.\n' +
     '   Example: DATABASE_URL=postgres://user:pass@localhost:5432/patternos'
   );
-  process.exit(1);
+  if (!process.env.VERCEL) process.exit(1);
 }
 
-const isSupabase = connectionString.includes('supabase');
+/**
+ * Parse a Postgres connection URL into individual components.
+ * Handles both postgres:// and postgresql:// protocols.
+ */
+function parseConnectionUrl(url) {
+  if (!url) return {};
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port, 10) || 5432,
+      database: parsed.pathname.replace('/', '') || 'postgres',
+      username: decodeURIComponent(parsed.username),
+      password: decodeURIComponent(parsed.password),
+    };
+  } catch (err) {
+    console.error('❌ Failed to parse DATABASE_URL:', err.message);
+    console.error('   Raw URL length:', url.length, 'first 50 chars:', JSON.stringify(url.substring(0, 50)));
+    console.error('   Char codes:', Array.from(url.substring(0, 20)).map(c => c.charCodeAt(0)).join(','));
+    return {};
+  }
+}
 
-const sql = postgres(connectionString, {
-  max: 3,
-  idle_timeout: 20,
-  ssl: isSupabase ? { rejectUnauthorized: false } : false,
-});
+const isSupabase = connectionString ? connectionString.includes('supabase') : false;
+const connParams = parseConnectionUrl(connectionString);
+
+let sql;
+try {
+  if (connParams.host) {
+    sql = postgres({
+      host: connParams.host,
+      port: connParams.port,
+      database: connParams.database,
+      username: connParams.username,
+      password: connParams.password,
+      max: 3,
+      idle_timeout: 20,
+      ssl: isSupabase ? { rejectUnauthorized: false } : false,
+    });
+    console.log('✅ Postgres connection configured for:', connParams.host);
+  } else if (connectionString) {
+    // Fallback: try passing URL directly
+    sql = postgres(connectionString, {
+      max: 3,
+      idle_timeout: 20,
+      ssl: isSupabase ? { rejectUnauthorized: false } : false,
+    });
+  }
+} catch (err) {
+  console.error('❌ Failed to create postgres connection:', err.message);
+}
 
 /**
  * Convert SQLite-style `?` placeholders to Postgres-style `$1, $2, $3...`
