@@ -1,6 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
+const NUMERIC_FIELDS = [
+  'physical_score', 'mental_score', 'financial_score', 'spiritual_score', 'overall_score',
+  'sleep_hours', 'mood_score', 'energy_score', 'focus_score', 'stress_score', 'productive_hours',
+  'water_intake', 'steps',
+];
+const BOOL_FIELDS = ['exercise', 'reflection_done', 'learning', 'gratitude_done'];
+
+function parseRow(row) {
+  if (!row) return null;
+  const out = { ...row };
+  for (const f of NUMERIC_FIELDS) {
+    if (out[f] != null) out[f] = parseFloat(out[f]) || 0;
+  }
+  for (const f of BOOL_FIELDS) {
+    if (out[f] != null) out[f] = out[f] === true || out[f] === 't' || out[f] === '1' || out[f] === 1;
+  }
+  return out;
+}
+
 export function usePillarData(days = 30) {
   const [history, setHistory] = useState([]);
   const [today, setToday] = useState(null);
@@ -17,9 +36,9 @@ export function usePillarData(days = 30) {
         axios.get('/api/checkin/today'),
         axios.get('/api/checkin/alerts'),
       ]);
-      setHistory(histRes.data);
-      setToday(todayRes.data);
-      setAlerts(alertRes.data);
+      setHistory((Array.isArray(histRes.data) ? histRes.data : []).map(parseRow));
+      setToday(parseRow(todayRes.data));
+      setAlerts(Array.isArray(alertRes.data) ? alertRes.data : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -29,6 +48,9 @@ export function usePillarData(days = 30) {
 
   useEffect(() => {
     fetchAll();
+    // Auto-refresh every 2 minutes to pick up Notion-synced check-ins
+    const interval = setInterval(fetchAll, 2 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [fetchAll]);
 
   const dismissAlert = async (id) => {

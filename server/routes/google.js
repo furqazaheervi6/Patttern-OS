@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getUpcomingEvents, getAuthUrl, handleCallback, credentialsExist, tokenExists } = require('../services/googleService');
+const { getUpcomingEvents, getEventsInRange, getAuthUrl, handleCallback, credentialsExist, tokenExists, tokenExistsAsync, createEvent, createEventsBatch } = require('../services/googleService');
 
 // GET /api/google/upcoming
 router.get('/upcoming', async (req, res) => {
@@ -12,12 +12,49 @@ router.get('/upcoming', async (req, res) => {
   }
 });
 
+// GET /api/google/events?start=2026-05-01&end=2026-05-31
+router.get('/events', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required' });
+    const events = await getEventsInRange(start, end);
+    res.json({ events });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/google/status
-router.get('/status', (req, res) => {
+router.get('/status', async (req, res) => {
   res.json({
     credentials_exist: credentialsExist(),
-    authorized: tokenExists(),
+    authorized: await tokenExistsAsync(),
   });
+});
+
+// POST /api/google/events — create a single event
+router.post('/events', async (req, res) => {
+  try {
+    const result = await createEvent(req.body);
+    res.json({ success: true, event: result });
+  } catch (err) {
+    const status = err.message?.includes('insufficient') || err.code === 403 ? 403 : 500;
+    res.status(status).json({ error: err.message, needs_reauth: status === 403 });
+  }
+});
+
+// POST /api/google/events/batch — sync plan blocks to Google Calendar
+router.post('/events/batch', async (req, res) => {
+  try {
+    const { events, timeZone = 'America/New_York' } = req.body;
+    if (!Array.isArray(events) || events.length === 0) return res.status(400).json({ error: 'events array required' });
+    const results = await createEventsBatch(events, timeZone);
+    const created = results.filter(r => r.success).length;
+    res.json({ success: true, results, created, total: events.length });
+  } catch (err) {
+    const status = err.message?.includes('insufficient') || err.code === 403 ? 403 : 500;
+    res.status(status).json({ error: err.message, needs_reauth: status === 403 });
+  }
 });
 
 // GET /api/google/auth

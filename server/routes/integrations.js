@@ -81,6 +81,45 @@ const SUPPORTED_INTEGRATIONS = [
     ],
     docs_url: null,
   },
+  {
+    name: 'openai',
+    type: 'api',
+    label: 'OpenAI',
+    description: 'Access GPT-4o and other OpenAI models for additional AI analysis alongside Claude',
+    icon: '🤖',
+    fields: [
+      { key: 'api_key', label: 'API Key', placeholder: 'sk-...' },
+      { key: 'org_id', label: 'Organization ID (optional)', placeholder: 'org-...' },
+      { key: 'model', label: 'Default Model', placeholder: 'gpt-4o', default: 'gpt-4o' },
+    ],
+    docs_url: 'https://platform.openai.com',
+  },
+  {
+    name: 'gmail',
+    type: 'oauth',
+    label: 'Gmail',
+    description: 'Read and send emails — get digest summaries delivered to your inbox and log communication patterns',
+    icon: '📧',
+    fields: [
+      { key: 'email', label: 'Gmail Address', placeholder: 'you@gmail.com' },
+      { key: 'app_password', label: 'App Password', placeholder: '16-character app password' },
+      { key: 'digest_email', label: 'Send Digests To (optional)', placeholder: 'you@gmail.com' },
+    ],
+    docs_url: 'https://myaccount.google.com/apppasswords',
+  },
+  {
+    name: 'imessage',
+    type: 'local',
+    label: 'iMessage',
+    description: 'Receive daily check-in reminders and digest summaries via iMessage on your Mac using BlueBubbles',
+    icon: '💬',
+    fields: [
+      { key: 'phone_number', label: 'Phone Number', placeholder: '+1 (555) 000-0000' },
+      { key: 'server_url', label: 'BlueBubbles Server URL', placeholder: 'http://localhost:1234' },
+      { key: 'api_key', label: 'BlueBubbles Password / API Key', placeholder: 'your-server-password' },
+    ],
+    docs_url: 'https://bluebubbles.app',
+  },
 ];
 
 // GET /api/integrations — list all integrations with their status
@@ -308,6 +347,66 @@ router.post('/:name/test', async (req, res) => {
       case 'google_calendar':
         result = { success: true, message: 'Use the OAuth flow in Settings to connect' };
         break;
+
+      case 'openai': {
+        const key = stored?.api_key;
+        if (!key) {
+          result = { success: false, message: 'No API key configured' };
+        } else {
+          try {
+            const config = JSON.parse(stored.config || '{}');
+            const model = config.model || 'gpt-4o';
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+              signal: AbortSignal.timeout(8000),
+            });
+            if (response.ok) {
+              result = { success: true, message: `OpenAI connected (${model})` };
+            } else {
+              const err = await response.json().catch(() => ({}));
+              result = { success: false, message: err.error?.message || `HTTP ${response.status}` };
+            }
+          } catch (e) {
+            result = { success: false, message: e.message };
+          }
+        }
+        break;
+      }
+
+      case 'gmail': {
+        const config = JSON.parse(stored?.config || '{}');
+        const email = config.email;
+        if (!email) {
+          result = { success: false, message: 'No Gmail address configured' };
+        } else {
+          result = { success: true, message: `Gmail address saved (${email}). SMTP delivery active when app password is set.` };
+        }
+        break;
+      }
+
+      case 'imessage': {
+        const config = JSON.parse(stored?.config || '{}');
+        const serverUrl = config.server_url;
+        const key = stored?.api_key;
+        if (!serverUrl) {
+          result = { success: false, message: 'No BlueBubbles server URL configured' };
+        } else {
+          try {
+            const response = await fetch(`${serverUrl}/api/v1/server/info`, {
+              headers: key ? { 'Authorization': `Bearer ${key}` } : {},
+              signal: AbortSignal.timeout(5000),
+            });
+            result = response.ok
+              ? { success: true, message: 'BlueBubbles server reachable — iMessage ready' }
+              : { success: false, message: `BlueBubbles returned ${response.status}` };
+          } catch (e) {
+            result = { success: false, message: `Cannot reach BlueBubbles: ${e.message}` };
+          }
+        }
+        break;
+      }
     }
 
     // Update status in DB

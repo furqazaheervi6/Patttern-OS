@@ -5,8 +5,8 @@ import { localDateStr } from '../utils/formatters.js';
 
 // ─── Brand Constants ───────────────────────────────────
 
-const ACCENT_GRADIENT = 'linear-gradient(135deg, #14B8A6, #8B5CF6)';
-const ACCENT_BG = '#0B1120';
+const ACCENT_GRADIENT = 'linear-gradient(135deg, #8B0000, #B22222)';
+const ACCENT_BG = '#D4D4D8';
 
 // All 7 evolution domains
 const DOMAINS = [
@@ -175,7 +175,7 @@ export default function Settings() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="pl-10 lg:pl-0 mb-8">
+      <div className="pl-10 lg:pl-0 mb-5">
         <h1 className="font-display font-bold text-xl text-text-primary tracking-tight">Settings</h1>
         <p className="text-sm text-text-muted mt-1.5">
           Configure your integrations, pillars, goals, and daily rhythm.
@@ -183,7 +183,7 @@ export default function Settings() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-8 overflow-x-auto pb-1 border-b border-border/50">
+      <div className="flex gap-1 mb-5 overflow-x-auto pb-1 border-b border-border/50">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -393,6 +393,34 @@ function IntegrationsTab() {
                     }}>
                       Fire Test Webhook
                     </AccentButton>
+                  </div>
+                )}
+
+                {integ.name === 'gmail' && (
+                  <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-2">
+                    <p className="text-xs text-text-muted font-semibold">Setup — Gmail App Password</p>
+                    <p className="text-xs text-text-muted leading-relaxed">1. Go to your Google Account → Security → 2-Step Verification → App Passwords</p>
+                    <p className="text-xs text-text-muted leading-relaxed">2. Create an app password for "Mail" on "Other Device"</p>
+                    <p className="text-xs text-text-muted leading-relaxed">3. Paste the 16-character password above — PatternOS uses it to send digests to your inbox</p>
+                    {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Open App Passwords page</a>}
+                  </div>
+                )}
+
+                {integ.name === 'imessage' && (
+                  <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-2">
+                    <p className="text-xs text-text-muted font-semibold">Setup — BlueBubbles (macOS)</p>
+                    <p className="text-xs text-text-muted leading-relaxed">1. Install BlueBubbles on your Mac — it bridges iMessage to a REST API</p>
+                    <p className="text-xs text-text-muted leading-relaxed">2. Start the BlueBubbles server and note the URL (default: http://localhost:1234)</p>
+                    <p className="text-xs text-text-muted leading-relaxed">3. Enter your server password above — PatternOS will send check-in reminders to your phone number</p>
+                    {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Download BlueBubbles</a>}
+                  </div>
+                )}
+
+                {integ.name === 'openai' && (
+                  <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-1.5">
+                    <p className="text-xs text-text-muted leading-relaxed">
+                      OpenAI models can be used alongside Claude for secondary analysis, embeddings, and multi-model comparisons. Get your API key at <span className="text-teal">platform.openai.com/api-keys</span>.
+                    </p>
                   </div>
                 )}
 
