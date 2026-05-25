@@ -16,6 +16,7 @@ import ActivityImpact from '../components/ActivityImpact.jsx';
 import IntelligenceFeed from '../components/IntelligenceFeed.jsx';
 import TodayPlanWidget from '../components/TodayPlanWidget.jsx';
 import OperatorOpsPanel from '../components/OperatorOpsPanel.jsx';
+import GoalsWidget from '../components/GoalsWidget.jsx';
 import { usePillarData, useWeekComparison } from '../hooks/usePillarData.js';
 
 const PILLARS = ['physical', 'mental', 'financial', 'spiritual'];
@@ -161,6 +162,9 @@ export default function Home() {
 
           {/* Today's Plan */}
           <TodayPlanWidget />
+
+          {/* Goals Progress */}
+          <GoalsWidget />
 
           {/* Operator: Execution Domains */}
           {isOperator && <OperatorOpsPanel />}

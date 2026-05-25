@@ -2,13 +2,46 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const STREAK_CONFIG = {
-  checkin: { label: 'Check-In', icon: '📋', color: '#60A5FA' },
-  exercise: { label: 'Exercise', icon: '💪', color: '#22C55E' },
-  meditation: { label: 'Meditation', icon: '🧘', color: '#C084FC' },
-  learning: { label: 'Learning', icon: '📚', color: '#06B6D4' },
-  gratitude: { label: 'Gratitude', icon: '🙏', color: '#F97316' },
-  sleep7plus: { label: 'Sleep 7+hrs', icon: '🌙', color: '#F472B6' },
+  checkin:    { label: 'Check-In',   color: '#60A5FA' },
+  exercise:   { label: 'Exercise',   color: '#22C55E' },
+  meditation: { label: 'Focus',      color: '#C084FC' },
+  learning:   { label: 'Learning',   color: '#06B6D4' },
+  gratitude:  { label: 'Gratitude',  color: '#F97316' },
+  sleep7plus: { label: 'Sleep 7h+',  color: '#F472B6' },
 };
+
+function StreakItem({ label, color, current, best }) {
+  const isHot = current >= 7;
+
+  return (
+    <div
+      className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all"
+      style={{
+        background: `${color}08`,
+        border: `1px solid ${color}20`,
+      }}
+    >
+      <div className="flex-1 min-w-0">
+        <p style={{ fontSize: '0.6rem', color: '#4A4A68', textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: 'DM Mono, monospace', marginBottom: '2px' }}>
+          {label}
+        </p>
+        <div className="flex items-baseline gap-1.5">
+          <span style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '1.4rem', fontWeight: 700, color, lineHeight: 1 }}>
+            {current}
+          </span>
+          <span style={{ fontSize: '0.6rem', color: '#3A3A50', fontFamily: 'DM Mono, monospace' }}>days</span>
+          {isHot && <span style={{ fontSize: '0.75rem' }}>🔥</span>}
+        </div>
+      </div>
+      {best > current && (
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: '0.58rem', color: '#3A3A50', fontFamily: 'DM Mono, monospace' }}>best</p>
+          <p style={{ fontSize: '0.7rem', color: '#4A4A68', fontFamily: 'DM Mono, monospace', fontWeight: 600 }}>{best}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function StreakBar({ filter }) {
   const [streaks, setStreaks] = useState(null);
@@ -30,33 +63,24 @@ export default function StreakBar({ filter }) {
   if (entries.length === 0) return null;
 
   return (
-    <div className="card">
-      <h3 className="font-display font-semibold text-sm text-text-primary mb-3">Active Streaks</h3>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+    <div
+      className="rounded-xl p-4 fade-in"
+      style={{ background: 'rgba(20,20,36,0.6)', border: '1px solid #252540' }}
+    >
+      <p style={{ fontSize: '0.62rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '12px' }}>
+        Active Streaks
+      </p>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
         {entries.map(([key, val]) => {
-          const cfg = STREAK_CONFIG[key] || { label: key, icon: '🔥', color: '#6B7280' };
+          const cfg = STREAK_CONFIG[key] || { label: key, color: '#5A5A72' };
           return (
-            <div
+            <StreakItem
               key={key}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-bg/50"
-            >
-              <span className="text-lg">{cfg.icon}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-text-muted font-mono truncate">{cfg.label}</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display font-bold text-lg" style={{ color: cfg.color }}>
-                    {val.current}
-                  </span>
-                  <span className="text-xs text-text-muted font-mono">days</span>
-                  {val.best > val.current && (
-                    <span className="text-xs text-text-muted font-mono">
-                      best: {val.best}
-                    </span>
-                  )}
-                </div>
-              </div>
-              {val.current >= 7 && <span className="text-sm">🔥</span>}
-            </div>
+              label={cfg.label}
+              color={cfg.color}
+              current={val.current}
+              best={val.best}
+            />
           );
         })}
       </div>
