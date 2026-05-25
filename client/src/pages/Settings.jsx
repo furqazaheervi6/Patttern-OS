@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useToast } from '../components/Toast.jsx';
 import { localDateStr } from '../utils/formatters.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { usePushNotifications } from '../hooks/usePushNotifications.js';
 
 // ─── Brand Constants ───────────────────────────────────
 
@@ -165,6 +166,7 @@ const TABS = [
   { id: 'activities',   label: 'Activities',   icon: '⚡' },
   { id: 'goals',        label: 'Goals',        icon: '🎯' },
   { id: 'reminders',    label: 'Reminders',    icon: '⏰' },
+  { id: 'notifications',label: 'Notifications',icon: '🔔' },
   { id: 'billing',      label: 'Billing',      icon: '💳' },
   { id: 'data',         label: 'Data & Import',icon: '💾' },
   { id: 'about',        label: 'About',        icon: '◎' },
@@ -207,6 +209,7 @@ export default function Settings() {
         {tab === 'activities'   && <ActivitiesTab />}
         {tab === 'goals'        && <GoalsTab />}
         {tab === 'reminders'    && <RemindersTab />}
+        {tab === 'notifications' && <NotificationsTab />}
         {tab === 'billing'      && <BillingTab />}
         {tab === 'data'         && <DataTab />}
         {tab === 'about'        && <AboutTab />}
@@ -1862,6 +1865,118 @@ function BillingTab() {
             <AccentButton variant="ghost" onClick={manageSubscription} disabled={redirecting}>Manage Subscription</AccentButton>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Notifications Tab ──────────────────────────────────
+
+function NotificationsTab() {
+  const { supported, permission, subscribed, loading, subscribe, unsubscribe, sendTest } = usePushNotifications();
+  const [testResult, setTestResult] = React.useState(null);
+
+  const handleToggle = async () => {
+    if (subscribed) {
+      await unsubscribe();
+      setTestResult(null);
+    } else {
+      const result = await subscribe();
+      if (result.error) setTestResult({ error: result.error });
+    }
+  };
+
+  const handleTest = async () => {
+    const result = await sendTest();
+    setTestResult(result);
+    setTimeout(() => setTestResult(null), 4000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="card">
+        <h3 className="font-display font-semibold text-sm text-text-primary mb-1">Push Notifications</h3>
+        <p className="text-xs text-text-muted mb-4">
+          Get daily check-in reminders, plan alerts, and intelligence updates on your iPhone or Mac.
+        </p>
+
+        {!supported ? (
+          <div className="rounded-xl p-4" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)' }}>
+            <p className="text-xs text-red-400">
+              Push notifications are not supported in this browser.
+              {navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')
+                ? ' On iPhone, save the app to your home screen first (Share → Add to Home Screen), then enable from there.'
+                : ''}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: 'rgba(37,37,64,0.4)', border: '1px solid #252540' }}>
+              <div>
+                <p className="text-sm text-text-primary font-medium">
+                  {subscribed ? '✓ Notifications enabled' : 'Enable notifications'}
+                </p>
+                <p className="text-xs text-text-muted mt-0.5">
+                  {permission === 'denied'
+                    ? 'Blocked — allow in browser/phone settings'
+                    : subscribed
+                    ? 'You\'ll receive check-in reminders and plan alerts'
+                    : 'Daily reminders to check in and plan your day'}
+                </p>
+              </div>
+              <button
+                onClick={handleToggle}
+                disabled={loading || permission === 'denied'}
+                className="px-4 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+                style={subscribed
+                  ? { border: '1px solid #252540', color: '#5A5A72' }
+                  : { background: 'linear-gradient(135deg, #8B0000, #B22222)', color: '#D4D4D8' }
+                }
+              >
+                {loading ? '...' : subscribed ? 'Disable' : 'Enable'}
+              </button>
+            </div>
+
+            {subscribed && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleTest}
+                  className="text-xs px-3 py-2 rounded-lg border border-border text-text-muted hover:text-text-primary transition-colors"
+                >
+                  Send test notification
+                </button>
+                {testResult && (
+                  <span className="text-xs" style={{ color: testResult.error ? '#F87171' : '#22C55E' }}>
+                    {testResult.error ? `Error: ${testResult.error}` : `✓ Sent to ${testResult.sent} device(s)`}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h3 className="font-display font-semibold text-sm text-text-primary mb-3">Install on iPhone</h3>
+        <ol className="space-y-3">
+          {[
+            { n: '1', text: 'Open PatternOS in Safari on your iPhone' },
+            { n: '2', text: 'Tap the Share button (the box with an arrow pointing up)' },
+            { n: '3', text: 'Scroll down and tap "Add to Home Screen"' },
+            { n: '4', text: 'Tap Add — PatternOS will appear on your home screen like a native app' },
+            { n: '5', text: 'Open the installed app and enable notifications in Settings → Notifications above' },
+          ].map(({ n, text }) => (
+            <li key={n} className="flex items-start gap-3">
+              <span
+                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                style={{ background: 'rgba(139,0,0,0.15)', color: '#8B0000', border: '1px solid rgba(139,0,0,0.25)' }}
+              >
+                {n}
+              </span>
+              <p className="text-xs text-text-muted pt-0.5">{text}</p>
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ const MIGRATION_FILES = [
   'phase2-migration.sql',
   'auth-migration.sql',
   'phase3-migration.sql',
+  'phase4-migration.sql',
 ];
 
 // Errors we can safely ignore on re-runs

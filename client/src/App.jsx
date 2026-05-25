@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar.jsx';
+import MobileTabBar from './components/MobileTabBar.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import ChatBot from './components/ChatBot.jsx';
@@ -52,7 +53,7 @@ function AppShell() {
   return (
     <div className="flex min-h-screen relative" style={{ zIndex: 1 }}>
       <Sidebar />
-      <main className="flex-1 overflow-y-auto min-w-0">
+      <main className="flex-1 overflow-y-auto min-w-0 lg:pb-0 pb-[72px]">
         <ErrorBoundary>
           <Routes>
             {/* Public */}
@@ -80,6 +81,7 @@ function AppShell() {
         </ErrorBoundary>
       </main>
       {user && <ChatBot open={chatOpen} onToggle={() => setChatOpen(v => !v)} />}
+      <MobileTabBar />
     </div>
   );
 }

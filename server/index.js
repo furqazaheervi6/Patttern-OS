@@ -48,6 +48,7 @@ app.use('/api/initiatives',  require('./routes/initiatives'));
 app.use('/api/billing',      require('./routes/billing'));
 app.use('/api/intelligence', require('./routes/intelligence'));
 app.use('/api/patterns',     require('./routes/patterns'));
+app.use('/api/push',         require('./routes/push'));
 
 app.get('/api/health', (req, res) => res.json({
   status: 'ok',
