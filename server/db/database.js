@@ -48,6 +48,7 @@ try {
     connect_timeout: 10,
     max_lifetime: 1800,
     ssl: isSupabase ? { rejectUnauthorized: false } : false,
+    onnotice: () => {}, // suppress IF NOT EXISTS / already exists NOTICE spam
   };
 
   if (connParams.host) {

@@ -57,11 +57,20 @@ app.get('/api/health', (req, res) => res.json({
 // ── Local development server ─────────────────────────────
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    console.log(`\n  PatternOS server running at http://localhost:${PORT}`);
-    console.log(`  API health: http://localhost:${PORT}/api/health\n`);
-    const { startCronJobs } = require('./services/cronJobs');
-    startCronJobs();
+  const { runMigrations } = require('./db/runMigrations');
+  runMigrations().then(() => {
+    app.listen(PORT, () => {
+      console.log(`\n  PatternOS server running at http://localhost:${PORT}`);
+      console.log(`  API health: http://localhost:${PORT}/api/health\n`);
+      const { startCronJobs } = require('./services/cronJobs');
+      startCronJobs();
+    });
+  }).catch(err => {
+    console.error('Migration error:', err.message);
+    // Start anyway — migration errors shouldn't block the server
+    app.listen(PORT, () => {
+      console.log(`\n  PatternOS server running at http://localhost:${PORT}\n`);
+    });
   });
 }
 

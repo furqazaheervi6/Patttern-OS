@@ -8,10 +8,10 @@ CREATE TABLE IF NOT EXISTS user_settings (
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Seed default active model
+-- Seed default active model (global/anonymous row — user_id IS NULL)
 INSERT INTO user_settings (key, value)
 VALUES ('active_ai_model', '{"provider":"anthropic","model":"claude-sonnet-4-6"}')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (key) WHERE user_id IS NULL DO NOTHING;
 
 -- Per-call API usage log for cost tracking
 CREATE TABLE IF NOT EXISTS api_usage_log (
