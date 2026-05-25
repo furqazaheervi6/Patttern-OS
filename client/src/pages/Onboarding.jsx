@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -25,10 +25,69 @@ export default function Onboarding() {
   const [mode, setMode] = useState(user?.mode || 'personal');
   const [goal, setGoal] = useState({ title: '', domain: 'financial', target_value: 0, target_label: '' });
   const [saving, setSaving] = useState(false);
-  const [gcalStatus, setGcalStatus] = useState(null);
+  const [gcalConnected, setGcalConnected] = useState(false);
+  const [gcalChecking, setGcalChecking] = useState(false);
+  const popupRef = useRef(null);
+  const pollRef = useRef(null);
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
+
+  // Check if already connected when landing on calendar step
+  useEffect(() => {
+    if (STEPS[step].id === 'calendar') {
+      axios.get('/api/google/status').then(r => {
+        if (r.data.authorized) setGcalConnected(true);
+      }).catch(() => {});
+    }
+  }, [step]);
+
+  // Listen for postMessage from OAuth popup
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === 'gcal_connected') {
+        setGcalConnected(true);
+        setGcalChecking(false);
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  // Clean up poll on unmount
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  const openGcalAuth = () => {
+    setGcalChecking(true);
+    const w = 520, h = 640;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    const popup = window.open('/api/google/auth', 'gcal_oauth', `width=${w},height=${h},left=${left},top=${top},toolbar=0,menubar=0`);
+    popupRef.current = popup;
+
+    // Poll every 1.5s — detect connection or popup close
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await axios.get('/api/google/status');
+        if (r.data.authorized) {
+          setGcalConnected(true);
+          setGcalChecking(false);
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          return;
+        }
+      } catch {}
+      // If user closed popup without connecting
+      if (popupRef.current?.closed) {
+        setGcalChecking(false);
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    }, 1500);
+  };
 
   const saveMode = async () => {
     setSaving(true);
@@ -36,14 +95,6 @@ export default function Onboarding() {
       await updateUser({ mode });
     } catch {}
     setSaving(false);
-    next();
-  };
-
-  const checkCalendar = async () => {
-    try {
-      const r = await axios.get('/api/google/status');
-      setGcalStatus(r.data);
-    } catch {}
     next();
   };
 
@@ -206,33 +257,76 @@ export default function Onboarding() {
           {/* ── Calendar connection ── */}
           {stepId === 'calendar' && (
             <div className="space-y-5 text-center">
-              <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl" style={{ background: 'rgba(96,165,250,0.1)' }}>
-                📅
+              {/* Icon — swaps to checkmark when connected */}
+              <div
+                className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl transition-all duration-500"
+                style={{
+                  background: gcalConnected ? 'rgba(34,197,94,0.12)' : 'rgba(96,165,250,0.1)',
+                  border: gcalConnected ? '1px solid rgba(34,197,94,0.3)' : '1px solid transparent',
+                }}
+              >
+                {gcalConnected ? (
+                  <span style={{ fontSize: '2rem', color: '#22C55E' }}>✓</span>
+                ) : (
+                  '📅'
+                )}
               </div>
-              <h2 className="font-display font-bold text-xl text-text-primary">Connect Google Calendar</h2>
-              <p className="text-sm text-text-muted leading-relaxed max-w-xs mx-auto">
-                PatternOS reads your existing events to avoid conflicts and writes your AI-generated day plan directly to your calendar.
-              </p>
 
-              <div className="space-y-3">
-                <a
-                  href="/api/google/auth"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2.5 w-full py-3 rounded-xl text-sm font-medium transition-all"
-                  style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', color: '#93C5FD' }}
+              <div>
+                <h2 className="font-display font-bold text-xl text-text-primary">
+                  {gcalConnected ? 'Calendar Connected' : 'Connect Google Calendar'}
+                </h2>
+                <p className="text-sm text-text-muted leading-relaxed max-w-xs mx-auto mt-1.5">
+                  {gcalConnected
+                    ? 'PatternOS will read your events and write your AI day plans directly to your calendar.'
+                    : 'PatternOS reads your existing events to avoid conflicts and writes your AI-generated day plan directly to your calendar.'}
+                </p>
+              </div>
+
+              {/* Connected confirmation banner */}
+              {gcalConnected ? (
+                <div
+                  className="rounded-xl px-4 py-3 text-sm font-medium fade-in"
+                  style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ADE80' }}
                 >
-                  <span>📅</span> Connect Google Calendar
-                </a>
-                <p className="text-xs text-text-muted">Opens a new tab — return here when done</p>
-              </div>
+                  ✓ Google Calendar authorized — your events are synced
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    onClick={openGcalAuth}
+                    disabled={gcalChecking}
+                    className="flex items-center justify-center gap-2.5 w-full py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
+                    style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', color: '#93C5FD' }}
+                  >
+                    {gcalChecking ? (
+                      <>
+                        <span
+                          className="inline-block w-3.5 h-3.5 rounded-full border-2 border-t-transparent animate-spin"
+                          style={{ borderColor: '#93C5FD', borderTopColor: 'transparent' }}
+                        />
+                        Waiting for authorization…
+                      </>
+                    ) : (
+                      <><span>📅</span> Connect Google Calendar</>
+                    )}
+                  </button>
+                  {!gcalChecking && (
+                    <p className="text-xs text-text-muted">Opens a small sign-in window</p>
+                  )}
+                </div>
+              )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 <button onClick={back} className="flex-1 py-3 rounded-xl text-sm text-text-muted border border-border hover:text-text-primary transition-colors">
                   Back
                 </button>
-                <button onClick={checkCalendar} className="flex-1 py-3 rounded-xl font-display font-bold text-sm" style={{ background: 'linear-gradient(135deg, #8B0000, #B22222)', color: '#D4D4D8' }}>
-                  Skip for now →
+                <button
+                  onClick={next}
+                  className="flex-1 py-3 rounded-xl font-display font-bold text-sm transition-all"
+                  style={{ background: 'linear-gradient(135deg, #8B0000, #B22222)', color: '#D4D4D8' }}
+                >
+                  {gcalConnected ? 'Continue →' : 'Skip for now →'}
                 </button>
               </div>
             </div>

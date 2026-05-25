@@ -24,6 +24,7 @@ const Harmony      = lazy(() => import('./pages/Harmony.jsx'));
 const Omnivision   = lazy(() => import('./pages/Omnivision.jsx'));
 const TwoHundred   = lazy(() => import('./pages/TwoHundred.jsx'));
 const Humanity     = lazy(() => import('./pages/Humanity.jsx'));
+const Patterns     = lazy(() => import('./pages/Patterns.jsx'));
 
 function AuthGate({ children }) {
   const { user, loading } = useAuth();
@@ -66,6 +67,7 @@ function AppShell() {
             <Route path="/settings"            element={<AuthGate><Suspense fallback={<DashboardSkeleton />}><Settings /></Suspense></AuthGate>} />
             <Route path="/ops"                 element={<AuthGate><Suspense fallback={<DashboardSkeleton />}><Ops /></Suspense></AuthGate>} />
             <Route path="/initiatives"         element={<AuthGate><Suspense fallback={<DashboardSkeleton />}><Initiatives /></Suspense></AuthGate>} />
+            <Route path="/patterns"            element={<AuthGate><Suspense fallback={<DashboardSkeleton />}><Patterns /></Suspense></AuthGate>} />
             <Route path="/evolution/construction" element={<AuthGate><Suspense fallback={<EvolutionSkeleton />}><Construction /></Suspense></AuthGate>} />
             <Route path="/evolution/sojourney"    element={<AuthGate><Suspense fallback={<EvolutionSkeleton />}><Sojourney /></Suspense></AuthGate>} />
             <Route path="/evolution/kaizen"       element={<AuthGate><Suspense fallback={<EvolutionSkeleton />}><Kaizen /></Suspense></AuthGate>} />

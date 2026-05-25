@@ -8,6 +8,7 @@ const navItems = [
   { path: '/',            icon: '⬡', label: 'Dashboard' },
   { path: '/calendar',   icon: '◷', label: 'Calendar' },
   { path: '/initiatives',icon: '◈', label: 'Initiatives' },
+  { path: '/patterns',   icon: '⬟', label: 'Patterns' },
   { path: '/history',    icon: '≡', label: 'History' },
   { path: '/digest',     icon: '✦', label: 'Digests' },
   { path: '/ops',        icon: '⊹', label: 'Ops' },

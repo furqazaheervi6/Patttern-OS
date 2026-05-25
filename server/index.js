@@ -42,10 +42,12 @@ app.use('/api/cron', require('./routes/cron'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/calendar', require('./routes/calendarPlan'));
 app.use('/api/ops', require('./routes/ops'));
-app.use('/api/settings', require('./routes/settings'));
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/initiatives', require('./routes/initiatives'));
-app.use('/api/billing', require('./routes/billing'));
+app.use('/api/settings',     require('./routes/settings'));
+app.use('/api/auth',         require('./routes/auth'));
+app.use('/api/initiatives',  require('./routes/initiatives'));
+app.use('/api/billing',      require('./routes/billing'));
+app.use('/api/intelligence', require('./routes/intelligence'));
+app.use('/api/patterns',     require('./routes/patterns'));
 
 app.get('/api/health', (req, res) => res.json({
   status: 'ok',

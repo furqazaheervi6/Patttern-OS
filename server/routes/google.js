@@ -109,17 +109,26 @@ router.get('/auth/callback', async (req, res) => {
     const { code } = req.query;
     if (!code) return res.status(400).send('Missing authorization code');
     await handleCallback(code);
-    res.send(`
-      <html>
-        <body style="font-family: sans-serif; background: #0B1120; color: #F8FAFC; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
-          <div style="text-align:center;">
-            <h2>Google Calendar Connected!</h2>
-            <p>You can close this tab and return to PatternOS.</p>
-            <script>setTimeout(() => window.close(), 2000);</script>
-          </div>
-        </body>
-      </html>
-    `);
+    res.send(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Connected</title></head>
+<body style="font-family:'Inter',sans-serif;background:#080E1C;color:#F8FAFC;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+  <div style="text-align:center;animation:fadeIn .4s ease;">
+    <div style="width:64px;height:64px;border-radius:50%;background:rgba(34,197,94,0.15);border:2px solid rgba(34,197,94,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;">✓</div>
+    <h2 style="font-size:1.2rem;font-weight:600;margin:0 0 8px;color:#C9C9C9;">Google Calendar Connected</h2>
+    <p style="font-size:.85rem;color:#5A5A72;margin:0;">Closing this window…</p>
+  </div>
+  <style>@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}</style>
+  <script>
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'gcal_connected' }, '*');
+      }
+    } catch(e) {}
+    setTimeout(() => window.close(), 1800);
+  </script>
+</body>
+</html>`);
   } catch (err) {
     res.status(500).send(`Auth failed: ${err.message}`);
   }
