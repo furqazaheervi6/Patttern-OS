@@ -42,6 +42,14 @@ const connParams = parseConnectionUrl(connectionString);
 
 let sql;
 try {
+  const poolOpts = {
+    max: 10,
+    idle_timeout: 30,
+    connect_timeout: 10,
+    max_lifetime: 1800,
+    ssl: isSupabase ? { rejectUnauthorized: false } : false,
+  };
+
   if (connParams.host) {
     sql = postgres({
       host: connParams.host,
@@ -49,18 +57,11 @@ try {
       database: connParams.database,
       username: connParams.username,
       password: connParams.password,
-      max: 3,
-      idle_timeout: 20,
-      ssl: isSupabase ? { rejectUnauthorized: false } : false,
+      ...poolOpts,
     });
     console.log('✅ Postgres connection configured for:', connParams.host);
   } else if (connectionString) {
-    // Fallback: try passing URL directly
-    sql = postgres(connectionString, {
-      max: 3,
-      idle_timeout: 20,
-      ssl: isSupabase ? { rejectUnauthorized: false } : false,
-    });
+    sql = postgres(connectionString, poolOpts);
   }
 } catch (err) {
   console.error('❌ Failed to create postgres connection:', err.message);
@@ -77,32 +78,31 @@ function convertPlaceholders(text) {
 
 /**
  * Run a query and return all matching rows as an array of plain objects.
- * Replaces: db.prepare(sql).all(params)
  */
+function withTimeout(promise, ms = 8000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`DB query timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 async function query(text, params = []) {
   const converted = convertPlaceholders(text);
-  const rows = await sql.unsafe(converted, params);
+  const rows = await withTimeout(sql.unsafe(converted, params));
   return Array.from(rows);
 }
 
-/**
- * Run a query and return the first row, or null if no rows match.
- * Replaces: db.prepare(sql).get(params)
- */
 async function queryOne(text, params = []) {
   const converted = convertPlaceholders(text);
-  const rows = await sql.unsafe(converted, params);
+  const rows = await withTimeout(sql.unsafe(converted, params));
   return rows.length > 0 ? rows[0] : null;
 }
 
-/**
- * Execute a write statement (INSERT, UPDATE, DELETE).
- * Returns the result object (use `.count` for affected rows).
- * Replaces: db.run(sql, params)
- */
 async function execute(text, params = []) {
   const converted = convertPlaceholders(text);
-  const result = await sql.unsafe(converted, params);
+  const result = await withTimeout(sql.unsafe(converted, params));
   return result;
 }
 

@@ -4,6 +4,7 @@ const { query, queryOne, execute } = require('../db/database');
 const { computeAllScores } = require('../utils/pillarScorer');
 const { detectPatternAlerts } = require('../services/claudeAgent');
 const { computeActivityModifiers, applyModifiers } = require('../utils/activityScorer');
+const { optionalAuth } = require('../middleware/auth');
 
 // Input validation
 function validateCheckin(data) {
@@ -22,9 +23,10 @@ function validateCheckin(data) {
 }
 
 // POST /api/checkin — save or update today's check-in
-router.post('/', async (req, res) => {
+router.post('/', optionalAuth, async (req, res) => {
   try {
     const data = req.body;
+    const userId = req.user?.id || null;
 
     const validationErrors = validateCheckin(data);
     if (validationErrors.length > 0) {
@@ -36,8 +38,17 @@ router.post('/', async (req, res) => {
     const scores = computeAllScores(data);
     const now = new Date().toISOString();
 
+    // Choose the right ON CONFLICT clause based on whether the user is authenticated.
+    // Phase 3 migration creates two partial unique indexes:
+    //   checkins_date_user     → (date, user_id) WHERE user_id IS NOT NULL
+    //   checkins_date_null_user → (date)          WHERE user_id IS NULL
+    const conflictClause = userId
+      ? `ON CONFLICT(date, user_id) WHERE user_id IS NOT NULL DO UPDATE SET`
+      : `ON CONFLICT(date) WHERE user_id IS NULL DO UPDATE SET`;
+
     const vals = [
       date,
+      userId,
       data.sleep_hours ?? null,
       data.exercise ? 1 : 0,
       data.energy_score ?? null,
@@ -64,14 +75,14 @@ router.post('/', async (req, res) => {
 
     await execute(`
       INSERT INTO checkins (
-        date, sleep_hours, exercise, energy_score, nutrition_score,
+        date, user_id, sleep_hours, exercise, energy_score, nutrition_score,
         focus_score, mood_score, stress_score, learning,
         productive_hours, milestone_hit, revenue_note, runway_note,
         reflection_done, purpose_score, gratitude_done, alignment_score,
         physical_score, mental_score, financial_score, spiritual_score, overall_score,
         updated_at
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-      ON CONFLICT(date) DO UPDATE SET
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      ${conflictClause}
         sleep_hours=EXCLUDED.sleep_hours, exercise=EXCLUDED.exercise,
         energy_score=EXCLUDED.energy_score, nutrition_score=EXCLUDED.nutrition_score,
         focus_score=EXCLUDED.focus_score, mood_score=EXCLUDED.mood_score,
@@ -85,7 +96,9 @@ router.post('/', async (req, res) => {
         overall_score=EXCLUDED.overall_score, updated_at=EXCLUDED.updated_at
     `, vals);
 
-    let saved = await queryOne('SELECT * FROM checkins WHERE date = ?', [date]);
+    const userFilter = userId ? 'AND user_id = ?' : 'AND user_id IS NULL';
+    const savedParams = userId ? [date, userId] : [date];
+    let saved = await queryOne(`SELECT * FROM checkins WHERE date = ? ${userFilter}`, savedParams);
 
     // Apply activity-based score modifiers if any activities are logged today
     const dailyActivities = await query(`
@@ -98,17 +111,21 @@ router.post('/', async (req, res) => {
     if (dailyActivities.length > 0) {
       const modifiers = computeActivityModifiers(dailyActivities);
       const adjusted = applyModifiers(scores, modifiers);
+      const updateFilter = userId ? 'AND user_id = ?' : 'AND user_id IS NULL';
+      const updateParams = [adjusted.physical_score, adjusted.mental_score, adjusted.financial_score, adjusted.spiritual_score, adjusted.overall_score, date, ...(userId ? [userId] : [])];
       await execute(
-        `UPDATE checkins SET physical_score=?, mental_score=?, financial_score=?, spiritual_score=?, overall_score=? WHERE date=?`,
-        [adjusted.physical_score, adjusted.mental_score, adjusted.financial_score, adjusted.spiritual_score, adjusted.overall_score, date]
+        `UPDATE checkins SET physical_score=?, mental_score=?, financial_score=?, spiritual_score=?, overall_score=? WHERE date=? ${updateFilter}`,
+        updateParams
       );
-      saved = await queryOne('SELECT * FROM checkins WHERE date = ?', [date]);
+      saved = await queryOne(`SELECT * FROM checkins WHERE date = ? ${userFilter}`, savedParams);
     }
 
     // Async pattern alert — don't block response
+    const recentFilter = userId ? 'AND user_id = ?' : 'AND user_id IS NULL';
+    const recentParams = userId ? [date, userId] : [date];
     const recent = await query(
-      'SELECT * FROM checkins WHERE date < ? ORDER BY date DESC LIMIT 7',
-      [date]
+      `SELECT * FROM checkins WHERE date < ? ${recentFilter} ORDER BY date DESC LIMIT 7`,
+      recentParams
     );
 
     detectPatternAlerts(saved, recent).then(async (result) => {
@@ -128,20 +145,19 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/checkin/today
-router.get('/today', async (req, res) => {
+router.get('/today', optionalAuth, async (req, res) => {
   try {
-    // Try UTC date first, then local date, then most recent entry
+    const userId = req.user?.id || null;
+    const uf = userId ? 'AND user_id = ?' : 'AND user_id IS NULL';
     const utcToday = new Date().toISOString().split('T')[0];
-    let row = await queryOne('SELECT * FROM checkins WHERE date = ?', [utcToday]);
+    let row = await queryOne(`SELECT * FROM checkins WHERE date = ? ${uf}`, userId ? [utcToday, userId] : [utcToday]);
     if (!row) {
-      // Try local date (offset from UTC)
       const now = new Date();
       const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      row = await queryOne('SELECT * FROM checkins WHERE date = ?', [localToday]);
+      row = await queryOne(`SELECT * FROM checkins WHERE date = ? ${uf}`, userId ? [localToday, userId] : [localToday]);
     }
     if (!row) {
-      // Fallback: most recent entry from today or yesterday
-      row = await queryOne("SELECT * FROM checkins WHERE date >= (CURRENT_DATE - 1)::text ORDER BY date DESC LIMIT 1");
+      row = await queryOne(`SELECT * FROM checkins WHERE date >= (CURRENT_DATE - 1)::text ${uf} ORDER BY date DESC LIMIT 1`, userId ? [userId] : []);
     }
     res.json(row || null);
   } catch (err) {
@@ -150,12 +166,14 @@ router.get('/today', async (req, res) => {
 });
 
 // GET /api/checkin/history?days=30
-router.get('/history', async (req, res) => {
+router.get('/history', optionalAuth, async (req, res) => {
   try {
+    const userId = req.user?.id || null;
     const days = parseInt(req.query.days) || 30;
+    const uf = userId ? 'AND user_id = ?' : 'AND user_id IS NULL';
     const rows = await query(
-      `SELECT * FROM checkins WHERE date >= (CURRENT_DATE - ?::int)::text ORDER BY date DESC`,
-      [days]
+      `SELECT * FROM checkins WHERE date >= (CURRENT_DATE - $1::int)::text ${uf} ORDER BY date DESC`,
+      userId ? [days, userId] : [days]
     );
     res.json(rows);
   } catch (err) {
@@ -186,9 +204,11 @@ router.post('/alerts/:id/dismiss', async (req, res) => {
 });
 
 // GET /api/checkin/:date
-router.get('/:date', async (req, res) => {
+router.get('/:date', optionalAuth, async (req, res) => {
   try {
-    const row = await queryOne('SELECT * FROM checkins WHERE date = ?', [req.params.date]);
+    const userId = req.user?.id || null;
+    const uf = userId ? 'AND user_id = ?' : 'AND user_id IS NULL';
+    const row = await queryOne(`SELECT * FROM checkins WHERE date = ? ${uf}`, userId ? [req.params.date, userId] : [req.params.date]);
     res.json(row || null);
   } catch (err) {
     res.status(500).json({ error: err.message });

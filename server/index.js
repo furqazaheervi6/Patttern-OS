@@ -21,6 +21,8 @@ app.use(cors({
     cb(null, true); // Permissive for now; tighten after launch
   },
 }));
+// Stripe webhook needs raw body — mount before json middleware
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '5mb' }));
 
 // ── Routes ───────────────────────────────────────────────
@@ -37,6 +39,13 @@ app.use('/api/reminders', require('./routes/reminders'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/imports', require('./routes/imports'));
 app.use('/api/cron', require('./routes/cron'));
+app.use('/api/chat', require('./routes/chat'));
+app.use('/api/calendar', require('./routes/calendarPlan'));
+app.use('/api/ops', require('./routes/ops'));
+app.use('/api/settings', require('./routes/settings'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/initiatives', require('./routes/initiatives'));
+app.use('/api/billing', require('./routes/billing'));
 
 app.get('/api/health', (req, res) => res.json({
   status: 'ok',
@@ -51,6 +60,8 @@ if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`\n  PatternOS server running at http://localhost:${PORT}`);
     console.log(`  API health: http://localhost:${PORT}/api/health\n`);
+    const { startCronJobs } = require('./services/cronJobs');
+    startCronJobs();
   });
 }
 

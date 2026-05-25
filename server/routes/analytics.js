@@ -75,6 +75,22 @@ router.get('/correlations', async (req, res) => {
       return res.json({ correlations: [], insufficient: true });
     }
 
+    // Cast all numeric/boolean fields coming from sql.unsafe() (which returns strings)
+    const numFields = ['sleep_hours','mood_score','energy_score','focus_score','stress_score',
+      'productive_hours','physical_score','mental_score','financial_score','spiritual_score',
+      'overall_score','water_intake','steps'];
+    const boolFields = ['exercise','reflection_done','learning','gratitude_done'];
+    const parsed = rows.map(r => {
+      const out = { ...r };
+      for (const f of numFields) {
+        if (out[f] != null) out[f] = parseFloat(out[f]) || 0;
+      }
+      for (const f of boolFields) {
+        if (out[f] != null) out[f] = out[f] === true || out[f] === 't' || out[f] === '1' || out[f] === 1 ? 1 : 0;
+      }
+      return out;
+    });
+
     const pairs = [
       { a: 'sleep_hours', b: 'focus_score', labelA: 'Sleep', labelB: 'Focus' },
       { a: 'sleep_hours', b: 'mood_score', labelA: 'Sleep', labelB: 'Mood' },
@@ -94,15 +110,15 @@ router.get('/correlations', async (req, res) => {
 
     const correlations = [];
     for (const pair of pairs) {
-      const aVals = rows.map(r => r[pair.a]).filter(v => v != null);
-      const bVals = rows.map(r => r[pair.b]).filter(v => v != null);
+      const aVals = parsed.map(r => r[pair.a]).filter(v => v != null);
+      const bVals = parsed.map(r => r[pair.b]).filter(v => v != null);
       if (aVals.length < 5 || bVals.length < 5) continue;
 
       // For boolean fields, compare average of B when A=true vs A=false
       const aIsBool = aVals.every(v => v === 0 || v === 1);
       if (aIsBool) {
-        const withA = rows.filter(r => r[pair.a] === 1).map(r => r[pair.b]).filter(v => v != null);
-        const withoutA = rows.filter(r => r[pair.a] === 0).map(r => r[pair.b]).filter(v => v != null);
+        const withA = parsed.filter(r => r[pair.a] === 1).map(r => r[pair.b]).filter(v => v != null);
+        const withoutA = parsed.filter(r => r[pair.a] === 0).map(r => r[pair.b]).filter(v => v != null);
         if (withA.length < 2 || withoutA.length < 2) continue;
         const avgWith = withA.reduce((s, v) => s + v, 0) / withA.length;
         const avgWithout = withoutA.reduce((s, v) => s + v, 0) / withoutA.length;
@@ -122,7 +138,7 @@ router.get('/correlations', async (req, res) => {
         }
       } else {
         // Pearson correlation for numeric pairs
-        const validRows = rows.filter(r => r[pair.a] != null && r[pair.b] != null);
+        const validRows = parsed.filter(r => r[pair.a] != null && r[pair.b] != null);
         if (validRows.length < 5) continue;
         const xs = validRows.map(r => r[pair.a]);
         const ys = validRows.map(r => r[pair.b]);
@@ -196,7 +212,7 @@ router.get('/comparison', async (req, res) => {
     );
 
     const avg = (arr, key) => {
-      const vals = arr.map(d => d[key]).filter(v => v != null);
+      const vals = arr.map(d => parseFloat(d[key])).filter(v => !isNaN(v));
       return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
     };
 

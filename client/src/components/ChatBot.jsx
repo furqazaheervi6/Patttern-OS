@@ -137,6 +137,7 @@ export default function ChatBot({ open, onToggle }) {
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingError, setRecordingError] = useState('');
+  const [calendarNotif, setCalendarNotif] = useState(null);
 
   const bottomRef   = useRef(null);
   const inputRef    = useRef(null);
@@ -302,6 +303,15 @@ export default function ChatBot({ open, onToggle }) {
         try {
           const actions = JSON.parse(actionMatch[1]);
           window.dispatchEvent(new CustomEvent('patternos:planactions', { detail: { actions } }));
+          const added = actions.filter(a => a.action === 'add').length;
+          const removed = actions.filter(a => a.action === 'remove').length;
+          const updated = actions.filter(a => a.action === 'update').length;
+          const parts = [];
+          if (added) parts.push(`+${added} added`);
+          if (removed) parts.push(`−${removed} removed`);
+          if (updated) parts.push(`${updated} updated`);
+          setCalendarNotif(parts.join(' · ') || `${actions.length} changes`);
+          setTimeout(() => setCalendarNotif(null), 4000);
         } catch {}
       }
 
@@ -453,6 +463,17 @@ export default function ChatBot({ open, onToggle }) {
                 ))}
               </div>
             </div>
+
+            {/* Calendar action notification */}
+            {calendarNotif && (
+              <div
+                className="mx-3 mt-2 px-3 py-2 rounded-lg text-xs flex items-center gap-2 fade-in"
+                style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#22C55E' }}
+              >
+                <span>📅</span>
+                <span>Calendar updated — {calendarNotif}</span>
+              </div>
+            )}
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-3 py-4">

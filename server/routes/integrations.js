@@ -3,9 +3,11 @@ const router = express.Router();
 const { query, queryOne, execute } = require('../db/database');
 
 const SUPPORTED_INTEGRATIONS = [
+  // ── AI ──────────────────────────────────────────────────────────────────────
   {
     name: 'anthropic',
     type: 'api',
+    category: 'ai',
     label: 'Anthropic / Claude',
     description: 'AI-powered weekly digests, pattern alerts, and journal analysis',
     icon: '🧠',
@@ -13,8 +15,114 @@ const SUPPORTED_INTEGRATIONS = [
     docs_url: 'https://console.anthropic.com',
   },
   {
+    name: 'openai',
+    type: 'api',
+    category: 'ai',
+    label: 'OpenAI',
+    description: 'Access GPT-4o and other OpenAI models for additional AI analysis alongside Claude',
+    icon: '🤖',
+    fields: [
+      { key: 'api_key', label: 'API Key', placeholder: 'sk-...' },
+      { key: 'org_id', label: 'Organization ID (optional)', placeholder: 'org-...' },
+      { key: 'model', label: 'Default Model', placeholder: 'gpt-4o', default: 'gpt-4o' },
+    ],
+    docs_url: 'https://platform.openai.com',
+  },
+  {
+    name: 'gemini',
+    type: 'api',
+    category: 'ai',
+    label: 'Google Gemini',
+    description: 'Gemini 2.0 Flash / Pro for multimodal analysis',
+    icon: '✦',
+    fields: [
+      { key: 'api_key', label: 'API Key', placeholder: 'AIza...' },
+      { key: 'model', label: 'Model', placeholder: 'gemini-2.0-flash', default: 'gemini-2.0-flash' },
+    ],
+    docs_url: 'https://aistudio.google.com',
+  },
+  {
+    name: 'kimi',
+    type: 'api',
+    category: 'ai',
+    label: 'Kimi (Moonshot AI)',
+    description: 'Long-context reasoning from Moonshot AI',
+    icon: '🌙',
+    fields: [
+      { key: 'api_key', label: 'API Key', placeholder: 'sk-...' },
+      { key: 'model', label: 'Model', placeholder: 'moonshot-v1-128k', default: 'moonshot-v1-128k' },
+    ],
+    docs_url: 'https://platform.moonshot.cn',
+  },
+  {
+    name: 'qwen',
+    type: 'api',
+    category: 'ai',
+    label: 'Qwen (Alibaba Cloud)',
+    description: 'Qwen models via DashScope — strong multilingual reasoning',
+    icon: '🐉',
+    fields: [
+      { key: 'api_key', label: 'API Key', placeholder: 'sk-...' },
+      { key: 'model', label: 'Model', placeholder: 'qwen-max', default: 'qwen-max' },
+    ],
+    docs_url: 'https://dashscope.aliyun.com',
+  },
+  {
+    name: 'groq',
+    type: 'api',
+    category: 'ai',
+    label: 'Groq',
+    description: 'Ultra-fast inference for Llama, Mixtral, and Gemma',
+    icon: '⚡',
+    fields: [
+      { key: 'api_key', label: 'API Key', placeholder: 'gsk_...' },
+      { key: 'model', label: 'Model', placeholder: 'llama-3.3-70b-versatile', default: 'llama-3.3-70b-versatile' },
+    ],
+    docs_url: 'https://console.groq.com',
+  },
+  {
+    name: 'mistral',
+    type: 'api',
+    category: 'ai',
+    label: 'Mistral AI',
+    description: 'Mistral Large and open-weight models via La Plateforme',
+    icon: '🌊',
+    fields: [
+      { key: 'api_key', label: 'API Key', placeholder: 'sk-...' },
+      { key: 'model', label: 'Model', placeholder: 'mistral-large-latest', default: 'mistral-large-latest' },
+    ],
+    docs_url: 'https://console.mistral.ai',
+  },
+  {
+    name: 'deepseek',
+    type: 'api',
+    category: 'ai',
+    label: 'DeepSeek',
+    description: 'DeepSeek-R1 reasoning and DeepSeek-V3 chat models',
+    icon: '🔭',
+    fields: [
+      { key: 'api_key', label: 'API Key', placeholder: 'sk-...' },
+      { key: 'model', label: 'Model', placeholder: 'deepseek-chat', default: 'deepseek-chat' },
+    ],
+    docs_url: 'https://platform.deepseek.com',
+  },
+  {
+    name: 'ollama',
+    type: 'api',
+    category: 'ai',
+    label: 'Ollama (Local)',
+    description: 'Run open-source models locally — Llama, Mistral, Phi, Qwen',
+    icon: '🦙',
+    fields: [
+      { key: 'endpoint', label: 'Ollama URL', placeholder: 'http://localhost:11434' },
+      { key: 'model', label: 'Model Name', placeholder: 'llama3.2' },
+    ],
+    docs_url: 'https://ollama.com',
+  },
+  {
     name: 'perplexity',
     type: 'api',
+    category: 'ai',
     label: 'Perplexity AI',
     description: 'Research-backed insights and health optimization queries via Sonar API',
     icon: '🔍',
@@ -24,9 +132,12 @@ const SUPPORTED_INTEGRATIONS = [
     ],
     docs_url: 'https://docs.perplexity.ai',
   },
+
+  // ── Productivity ─────────────────────────────────────────────────────────────
   {
     name: 'notion',
     type: 'api',
+    category: 'productivity',
     label: 'Notion',
     description: 'Journal sync and knowledge base integration',
     icon: '📓',
@@ -39,6 +150,7 @@ const SUPPORTED_INTEGRATIONS = [
   {
     name: 'google_calendar',
     type: 'oauth',
+    category: 'productivity',
     label: 'Google Calendar',
     description: 'Calendar events and scheduling awareness',
     icon: '📅',
@@ -48,55 +160,28 @@ const SUPPORTED_INTEGRATIONS = [
   {
     name: 'mcp_slashy',
     type: 'mcp',
-    label: 'Slashy / MCP',
+    category: 'productivity',
+    label: 'MCP Server',
     description: 'Model Context Protocol servers — connect any MCP-compatible tool or data source',
     icon: '⚡',
     fields: [
       { key: 'server_url', label: 'MCP Server URL', placeholder: 'http://localhost:8080/mcp' },
       { key: 'auth_token', label: 'Auth Token (optional)', placeholder: 'Bearer token or API key' },
     ],
+    dropdown_options: [
+      { value: 'http://localhost:8080', label: 'Local (port 8080)' },
+      { value: 'http://localhost:3100/mcp', label: 'Local (port 3100)' },
+      { value: 'https://mcp.run', label: 'mcp.run (cloud)' },
+      { value: 'custom', label: 'Custom URL…' },
+    ],
     docs_url: 'https://modelcontextprotocol.io',
   },
-  {
-    name: 'n8n',
-    type: 'webhook',
-    label: 'n8n',
-    description: 'Workflow automation — trigger n8n flows on check-in, goals, and report events',
-    icon: '🔄',
-    fields: [
-      { key: 'endpoint', label: 'n8n Webhook URL', placeholder: 'https://your-n8n.app/webhook/...' },
-      { key: 'api_key', label: 'n8n API Key (optional)', placeholder: 'eyJ...' },
-    ],
-    docs_url: 'https://docs.n8n.io',
-  },
-  {
-    name: 'webhook',
-    type: 'webhook',
-    label: 'Custom Webhook',
-    description: 'Send daily check-in data to any external endpoint (Zapier, Make, etc.)',
-    icon: '🔗',
-    fields: [
-      { key: 'endpoint', label: 'Webhook URL', placeholder: 'https://hooks.zapier.com/...' },
-      { key: 'secret', label: 'Signing Secret (optional)', placeholder: 'whsec_...' },
-    ],
-    docs_url: null,
-  },
-  {
-    name: 'openai',
-    type: 'api',
-    label: 'OpenAI',
-    description: 'Access GPT-4o and other OpenAI models for additional AI analysis alongside Claude',
-    icon: '🤖',
-    fields: [
-      { key: 'api_key', label: 'API Key', placeholder: 'sk-...' },
-      { key: 'org_id', label: 'Organization ID (optional)', placeholder: 'org-...' },
-      { key: 'model', label: 'Default Model', placeholder: 'gpt-4o', default: 'gpt-4o' },
-    ],
-    docs_url: 'https://platform.openai.com',
-  },
+
+  // ── Communication ────────────────────────────────────────────────────────────
   {
     name: 'gmail',
     type: 'oauth',
+    category: 'communication',
     label: 'Gmail',
     description: 'Read and send emails — get digest summaries delivered to your inbox and log communication patterns',
     icon: '📧',
@@ -110,6 +195,7 @@ const SUPPORTED_INTEGRATIONS = [
   {
     name: 'imessage',
     type: 'local',
+    category: 'communication',
     label: 'iMessage',
     description: 'Receive daily check-in reminders and digest summaries via iMessage on your Mac using BlueBubbles',
     icon: '💬',
@@ -119,6 +205,50 @@ const SUPPORTED_INTEGRATIONS = [
       { key: 'api_key', label: 'BlueBubbles Password / API Key', placeholder: 'your-server-password' },
     ],
     docs_url: 'https://bluebubbles.app',
+  },
+
+  // ── Fitness ──────────────────────────────────────────────────────────────────
+  {
+    name: 'strava',
+    type: 'api',
+    category: 'fitness',
+    label: 'Strava',
+    description: 'Sync runs, rides, and workouts to PatternOS physical pillar',
+    icon: '🚴',
+    fields: [
+      { key: 'client_id', label: 'Client ID', placeholder: 'Your Strava app client ID' },
+      { key: 'client_secret', label: 'Client Secret', placeholder: '...' },
+      { key: 'access_token', label: 'Access Token', placeholder: 'From OAuth flow' },
+    ],
+    docs_url: 'https://developers.strava.com',
+  },
+
+  // ── Automation ───────────────────────────────────────────────────────────────
+  {
+    name: 'n8n',
+    type: 'webhook',
+    category: 'automation',
+    label: 'n8n',
+    description: 'Workflow automation — trigger n8n flows on check-in, goals, and report events',
+    icon: '🔄',
+    fields: [
+      { key: 'endpoint', label: 'n8n Webhook URL', placeholder: 'https://your-n8n.app/webhook/...' },
+      { key: 'api_key', label: 'n8n API Key (optional)', placeholder: 'eyJ...' },
+    ],
+    docs_url: 'https://docs.n8n.io',
+  },
+  {
+    name: 'webhook',
+    type: 'webhook',
+    category: 'automation',
+    label: 'Custom Webhook',
+    description: 'Send daily check-in data to any external endpoint (Zapier, Make, etc.)',
+    icon: '🔗',
+    fields: [
+      { key: 'endpoint', label: 'Webhook URL', placeholder: 'https://hooks.zapier.com/...' },
+      { key: 'secret', label: 'Signing Secret (optional)', placeholder: 'whsec_...' },
+    ],
+    docs_url: null,
   },
 ];
 
@@ -407,6 +537,128 @@ router.post('/:name/test', async (req, res) => {
         }
         break;
       }
+
+      case 'gemini': {
+        const key = stored?.api_key;
+        if (!key) { result = { success: false, message: 'No API key configured' }; break; }
+        try {
+          const config = JSON.parse(stored.config || '{}');
+          const model = config.model || 'gemini-2.0-flash';
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] }),
+            signal: AbortSignal.timeout(8000),
+          });
+          result = response.ok ? { success: true, message: `Gemini connected (${model})` } : { success: false, message: `HTTP ${response.status}` };
+        } catch (e) { result = { success: false, message: e.message }; }
+        break;
+      }
+
+      case 'groq': {
+        const key = stored?.api_key;
+        if (!key) { result = { success: false, message: 'No API key configured' }; break; }
+        try {
+          const config = JSON.parse(stored.config || '{}');
+          const model = config.model || 'llama-3.3-70b-versatile';
+          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+            signal: AbortSignal.timeout(8000),
+          });
+          result = response.ok ? { success: true, message: `Groq connected (${model})` } : { success: false, message: `HTTP ${response.status}` };
+        } catch (e) { result = { success: false, message: e.message }; }
+        break;
+      }
+
+      case 'mistral': {
+        const key = stored?.api_key;
+        if (!key) { result = { success: false, message: 'No API key configured' }; break; }
+        try {
+          const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: JSON.parse(stored.config||'{}').model||'mistral-large-latest', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+            signal: AbortSignal.timeout(8000),
+          });
+          result = response.ok ? { success: true, message: 'Mistral AI connected' } : { success: false, message: `HTTP ${response.status}` };
+        } catch (e) { result = { success: false, message: e.message }; }
+        break;
+      }
+
+      case 'deepseek': {
+        const key = stored?.api_key;
+        if (!key) { result = { success: false, message: 'No API key configured' }; break; }
+        try {
+          const response = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: JSON.parse(stored.config||'{}').model||'deepseek-chat', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+            signal: AbortSignal.timeout(8000),
+          });
+          result = response.ok ? { success: true, message: 'DeepSeek connected' } : { success: false, message: `HTTP ${response.status}` };
+        } catch (e) { result = { success: false, message: e.message }; }
+        break;
+      }
+
+      case 'kimi': {
+        const key = stored?.api_key;
+        if (!key) { result = { success: false, message: 'No API key configured' }; break; }
+        try {
+          const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: JSON.parse(stored.config||'{}').model||'moonshot-v1-128k', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+            signal: AbortSignal.timeout(8000),
+          });
+          result = response.ok ? { success: true, message: 'Kimi / Moonshot AI connected' } : { success: false, message: `HTTP ${response.status}` };
+        } catch (e) { result = { success: false, message: e.message }; }
+        break;
+      }
+
+      case 'qwen': {
+        const key = stored?.api_key;
+        if (!key) { result = { success: false, message: 'No API key configured' }; break; }
+        try {
+          const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: JSON.parse(stored.config||'{}').model||'qwen-max', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+            signal: AbortSignal.timeout(8000),
+          });
+          result = response.ok ? { success: true, message: 'Qwen / DashScope connected' } : { success: false, message: `HTTP ${response.status}` };
+        } catch (e) { result = { success: false, message: e.message }; }
+        break;
+      }
+
+      case 'ollama': {
+        const url = stored?.endpoint || 'http://localhost:11434';
+        try {
+          const response = await fetch(`${url}/api/tags`, { signal: AbortSignal.timeout(4000) });
+          if (response.ok) {
+            const data = await response.json();
+            const count = data.models?.length || 0;
+            result = { success: true, message: `Ollama running — ${count} model(s) available` };
+          } else { result = { success: false, message: `Ollama returned ${response.status}` }; }
+        } catch (e) { result = { success: false, message: `Ollama not reachable: ${e.message}` }; }
+        break;
+      }
+
+      case 'strava': {
+        const key = stored?.api_key;
+        const config = JSON.parse(stored?.config || '{}');
+        const token = config.access_token || key;
+        if (!token) { result = { success: false, message: 'No access token configured' }; break; }
+        try {
+          const response = await fetch('https://www.strava.com/api/v3/athlete', {
+            headers: { 'Authorization': `Bearer ${token}` },
+            signal: AbortSignal.timeout(6000),
+          });
+          if (response.ok) {
+            const athlete = await response.json();
+            result = { success: true, message: `Strava connected as ${athlete.firstname} ${athlete.lastname}` };
+          } else { result = { success: false, message: `Strava returned ${response.status} — token may be expired` }; }
+        } catch (e) { result = { success: false, message: e.message }; }
+        break;
+      }
+
+      default:
+        result = { success: false, message: 'Unknown integration' };
     }
 
     // Update status in DB
@@ -418,6 +670,25 @@ router.post('/:name/test', async (req, res) => {
     }
 
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/integrations/:name — disconnect (clear credentials, reset to unconfigured)
+router.delete('/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const def = SUPPORTED_INTEGRATIONS.find(i => i.name === name);
+    if (!def) return res.status(404).json({ error: 'Unknown integration' });
+    const now = new Date().toISOString();
+    await execute(
+      `UPDATE integrations SET api_key = NULL, endpoint = NULL, config = '{}',
+       enabled = 0, status = 'unconfigured', updated_at = ?
+       WHERE name = ?`,
+      [now, name]
+    );
+    res.json({ success: true, name });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

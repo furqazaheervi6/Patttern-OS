@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useToast } from '../components/Toast.jsx';
 import { localDateStr } from '../utils/formatters.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 // ─── Brand Constants ───────────────────────────────────
 
@@ -161,11 +162,12 @@ function AccentButton({ onClick, disabled, children, variant = 'primary', classN
 
 const TABS = [
   { id: 'integrations', label: 'Integrations', icon: '🔌' },
-  { id: 'activities', label: 'Activities', icon: '⚡' },
-  { id: 'goals', label: 'Goals', icon: '🎯' },
-  { id: 'reminders', label: 'Reminders', icon: '⏰' },
-  { id: 'data', label: 'Data & Import', icon: '💾' },
-  { id: 'about', label: 'About', icon: '◎' },
+  { id: 'activities',   label: 'Activities',   icon: '⚡' },
+  { id: 'goals',        label: 'Goals',        icon: '🎯' },
+  { id: 'reminders',    label: 'Reminders',    icon: '⏰' },
+  { id: 'billing',      label: 'Billing',      icon: '💳' },
+  { id: 'data',         label: 'Data & Import',icon: '💾' },
+  { id: 'about',        label: 'About',        icon: '◎' },
 ];
 
 // ─── Main Settings ──────────────────────────────────────
@@ -202,11 +204,12 @@ export default function Settings() {
 
       <div className="fade-in">
         {tab === 'integrations' && <IntegrationsTab />}
-        {tab === 'activities' && <ActivitiesTab />}
-        {tab === 'goals' && <GoalsTab />}
-        {tab === 'reminders' && <RemindersTab />}
-        {tab === 'data' && <DataTab />}
-        {tab === 'about' && <AboutTab />}
+        {tab === 'activities'   && <ActivitiesTab />}
+        {tab === 'goals'        && <GoalsTab />}
+        {tab === 'reminders'    && <RemindersTab />}
+        {tab === 'billing'      && <BillingTab />}
+        {tab === 'data'         && <DataTab />}
+        {tab === 'about'        && <AboutTab />}
       </div>
     </div>
   );
@@ -214,12 +217,369 @@ export default function Settings() {
 
 // ─── Integrations Tab ───────────────────────────────────
 
+const CATEGORY_META = [
+  { id: 'ai',           label: 'AI Models',        icon: '🤖', description: 'LLM providers and AI APIs' },
+  { id: 'productivity', label: 'Productivity',      icon: '📅', description: 'Calendar, notes, and workflow tools' },
+  { id: 'communication',label: 'Communication',     icon: '💬', description: 'Messaging and email' },
+  { id: 'fitness',      label: 'Fitness & Health',  icon: '🏃', description: 'Activity and workout tracking' },
+  { id: 'automation',   label: 'Automation',        icon: '⚙️', description: 'Webhooks and workflow automation' },
+];
+
+function McpServerUrlField({ integ, formData, updateField }) {
+  const opts = integ.dropdown_options || [];
+  const stored = formData[integ.name]?.server_url || '';
+  const presetValues = opts.filter(o => o.value !== 'custom').map(o => o.value);
+  const isCustom = stored === 'custom' || (stored && !presetValues.includes(stored));
+  const selectVal = isCustom ? 'custom' : (stored || '');
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs text-text-muted block tracking-wide">MCP Server URL</label>
+      <select
+        value={selectVal}
+        onChange={(e) => updateField(integ.name, 'server_url', e.target.value)}
+        className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-bg text-sm text-text-primary focus:outline-none focus:border-teal transition-colors"
+      >
+        <option value="">— Select a server —</option>
+        {opts.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      {(selectVal === 'custom' || isCustom) && (
+        <input
+          type="text"
+          value={isCustom && stored !== 'custom' ? stored : ''}
+          onChange={(e) => updateField(integ.name, 'server_url', e.target.value)}
+          placeholder="https://your-mcp-server.com/mcp"
+          className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-bg text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-teal transition-colors"
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Model Switcher ─────────────────────────────────────
+
+const PROVIDER_MODELS = {
+  anthropic: [
+    { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5',  tier: 'fast',      cost: '$0.80 / $4' },
+    { id: 'claude-sonnet-4-6',         label: 'Sonnet 4.6', tier: 'balanced',  cost: '$3 / $15' },
+    { id: 'claude-opus-4-7',           label: 'Opus 4.7',   tier: 'powerful',  cost: '$15 / $75' },
+  ],
+  openai: [
+    { id: 'gpt-4o-mini', label: 'GPT-4o Mini', tier: 'fast',     cost: '$0.15 / $0.60' },
+    { id: 'gpt-4o',      label: 'GPT-4o',      tier: 'balanced', cost: '$2.50 / $10' },
+    { id: 'o3-mini',     label: 'o3-mini',      tier: 'reasoning',cost: '$1.10 / $4.40' },
+  ],
+  gemini: [
+    { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', tier: 'fast',    cost: '$0.075 / $0.30' },
+    { id: 'gemini-1.5-pro',   label: 'Gemini 1.5 Pro',   tier: 'balanced',cost: '$1.25 / $5' },
+  ],
+  groq: [
+    { id: 'llama-3.3-70b-versatile',       label: 'Llama 3.3 70B',   tier: 'fast',      cost: '$0.59 / $0.79' },
+    { id: 'deepseek-r1-distill-llama-70b', label: 'DeepSeek R1 70B', tier: 'reasoning', cost: '$0.75 / $0.99' },
+  ],
+  deepseek: [
+    { id: 'deepseek-chat',     label: 'DeepSeek V3', tier: 'balanced',  cost: '$0.27 / $1.10' },
+    { id: 'deepseek-reasoner', label: 'DeepSeek R1', tier: 'reasoning', cost: '$0.55 / $2.19' },
+  ],
+  mistral: [
+    { id: 'mistral-large-latest', label: 'Mistral Large', tier: 'balanced', cost: '$2 / $6' },
+    { id: 'mistral-small-latest', label: 'Mistral Small', tier: 'fast',     cost: '$0.10 / $0.30' },
+  ],
+};
+
+const TIER_COLORS = { fast: '#22C55E', balanced: '#60A5FA', powerful: '#C084FC', reasoning: '#FBBF24' };
+
+function ModelSwitcherPanel({ connectedProviders }) {
+  const [active, setActive] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const toast = useToast();
+
+  useEffect(() => {
+    axios.get('/api/settings/active_ai_model').then(r => {
+      if (r.data.value) setActive(r.data.value);
+      else setActive({ provider: 'anthropic', model: 'claude-sonnet-4-6' });
+    }).catch(() => setActive({ provider: 'anthropic', model: 'claude-sonnet-4-6' }));
+  }, []);
+
+  const select = async (provider, modelId) => {
+    setSaving(true);
+    try {
+      const val = { provider, model: modelId };
+      await axios.put('/api/settings/active_ai_model', { value: val });
+      setActive(val);
+      toast.success(`Active model → ${modelId}`);
+    } catch {
+      toast.error('Failed to save model preference');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!active) return null;
+
+  const availableProviders = Object.keys(PROVIDER_MODELS).filter(p =>
+    p === 'anthropic' || connectedProviders.includes(p)
+  );
+
+  return (
+    <div className="card mb-4" style={{ borderColor: 'rgba(96,165,250,0.2)', background: 'rgba(96,165,250,0.03)' }}>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-xs font-display font-semibold text-text-primary uppercase tracking-wider">Active AI Model</p>
+          <p className="text-xs text-text-muted mt-0.5">Used for plan generation, chat, and digests</p>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)' }}>
+          <span className="text-xs font-mono text-blue-400">{active.model}</span>
+          {saving && <span className="text-xs text-text-muted">saving…</span>}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {availableProviders.map(provider => {
+          const models = PROVIDER_MODELS[provider] || [];
+          const providerLabel = provider.charAt(0).toUpperCase() + provider.slice(1);
+          return (
+            <div key={provider}>
+              <p className="text-[10px] text-text-muted uppercase tracking-widest mb-2 font-mono">{providerLabel}</p>
+              <div className="flex flex-wrap gap-2">
+                {models.map(m => {
+                  const isActive = active.provider === provider && active.model === m.id;
+                  const tierColor = TIER_COLORS[m.tier] || '#64748B';
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => select(provider, m.id)}
+                      disabled={saving}
+                      className="flex flex-col gap-1 px-3 py-2.5 rounded-xl border text-left transition-all duration-150 disabled:opacity-50"
+                      style={{
+                        borderColor: isActive ? tierColor + '60' : '#252540',
+                        background:  isActive ? tierColor + '12' : 'rgba(20,20,36,0.5)',
+                        minWidth: '120px',
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {isActive && <span style={{ color: tierColor, fontSize: '0.55rem' }}>◉</span>}
+                        <span className="text-xs font-medium text-text-primary">{m.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: tierColor, background: tierColor + '15' }}>{m.tier}</span>
+                        <span className="text-[10px] text-text-muted font-mono">{m.cost}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {availableProviders.length < Object.keys(PROVIDER_MODELS).length && (
+        <p className="text-[10px] text-text-muted mt-3">
+          Connect more AI providers below to unlock additional model options.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function IntegrationCard({ integ, expanded, onToggle, formData, updateField, handleSave, handleTest, handleDisconnect, testing, disconnecting }) {
+  const isOpen = expanded === integ.name;
+  const toast = useToast();
+  const statusColor =
+    integ.status === 'connected' ? '#22C55E'
+    : integ.status === 'configured' ? '#FBBF24'
+    : integ.status === 'error' ? '#F87171'
+    : '#64748B';
+  const isConnected = integ.status === 'connected' || integ.status === 'configured';
+
+  return (
+    <div className="card">
+      <button className="w-full flex items-center justify-between" onClick={() => onToggle(integ.name)}>
+        <div className="flex items-center gap-3">
+          <span className="text-xl">{integ.icon}</span>
+          <div className="text-left">
+            <p className="font-display font-semibold text-sm text-text-primary">{integ.label}</p>
+            <p className="text-xs text-text-muted leading-relaxed">{integ.description}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span
+            className="text-xs px-2.5 py-1 rounded-lg border"
+            style={{ color: statusColor, borderColor: statusColor + '30', background: statusColor + '08' }}
+          >
+            {integ.status}
+          </span>
+          <span className="text-text-muted transition-transform duration-200" style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</span>
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="mt-5 pt-5 border-t border-border space-y-4 fade-in">
+          {/* Fields — MCP server_url gets special dropdown treatment */}
+          {integ.fields.map((field) => {
+            if (integ.name === 'mcp_slashy' && field.key === 'server_url') {
+              return <McpServerUrlField key={field.key} integ={integ} formData={formData} updateField={updateField} />;
+            }
+            const isSecret = field.key.includes('key') || field.key.includes('token') || field.key.includes('secret') || field.key.includes('password');
+            const Component = isSecret ? MaskedInput : TextInput;
+            return (
+              <Component key={field.key} label={field.label} value={formData[integ.name]?.[field.key] || ''} onChange={(v) => updateField(integ.name, field.key, v)} placeholder={field.placeholder} />
+            );
+          })}
+
+          {/* Per-integration setup hints */}
+          {integ.name === 'google_calendar' && (
+            <div className="space-y-3">
+              <div className="text-xs text-text-muted space-y-1.5 leading-relaxed">
+                <p>1. Enable Google Calendar API at <span className="text-teal">console.cloud.google.com</span></p>
+                <p>2. Create OAuth 2.0 credentials (Desktop app)</p>
+                <p>3. Download as <code className="text-teal">credentials.json</code> to project root</p>
+                <p>4. Click below to authorize</p>
+              </div>
+              <a href="/api/google/auth" target="_blank" rel="noopener noreferrer" className="inline-block px-4 py-2.5 rounded-xl text-xs text-teal border border-teal/30 hover:bg-teal/10 transition-colors">
+                Connect Google Calendar
+              </a>
+            </div>
+          )}
+
+          {integ.name === 'perplexity' && <PerplexityQuery />}
+
+          {integ.name === 'n8n' && (
+            <div className="space-y-3">
+              <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border">
+                <p className="text-xs text-text-muted leading-relaxed">
+                  n8n receives PatternOS events (check-ins, goal completions, reports) as webhook payloads.
+                  Create a Webhook trigger node in n8n and paste the URL above.
+                </p>
+                <p className="text-xs text-text-muted mt-2">Events sent: <span className="text-teal">daily_checkin</span>, <span className="text-teal">goal_completed</span>, <span className="text-teal">report_generated</span></p>
+              </div>
+              <AccentButton variant="ghost" onClick={async () => {
+                try {
+                  const r = await axios.post('/api/integrations/n8n/test');
+                  if (r.data.success) toast.success(r.data.message);
+                  else toast.error(r.data.message);
+                } catch (err) {
+                  toast.error(err.response?.data?.error || 'Failed');
+                }
+              }}>
+                Send Test Event
+              </AccentButton>
+            </div>
+          )}
+
+          {integ.name === 'mcp_slashy' && (
+            <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-2">
+              <p className="text-xs text-text-muted leading-relaxed">
+                Connect any MCP-compatible tool or data source. PatternOS will route context requests through the server.
+              </p>
+              {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Browse MCP ecosystem</a>}
+            </div>
+          )}
+
+          {integ.name === 'webhook' && (
+            <div className="space-y-3">
+              <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border">
+                <p className="text-xs text-text-muted leading-relaxed">
+                  Sends a POST with your daily check-in data + logged activities as JSON. Compatible with Zapier, Make, or any webhook receiver.
+                </p>
+              </div>
+              <AccentButton variant="ghost" onClick={async () => {
+                try {
+                  const r = await axios.post('/api/integrations/webhook/fire');
+                  toast.success(`Webhook fired — HTTP ${r.data.status}`);
+                } catch (err) {
+                  toast.error(err.response?.data?.error || 'Failed');
+                }
+              }}>
+                Fire Test Webhook
+              </AccentButton>
+            </div>
+          )}
+
+          {integ.name === 'gmail' && (
+            <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-2">
+              <p className="text-xs text-text-muted font-semibold">Setup — Gmail App Password</p>
+              <p className="text-xs text-text-muted leading-relaxed">1. Google Account → Security → 2-Step Verification → App Passwords</p>
+              <p className="text-xs text-text-muted leading-relaxed">2. Create app password for "Mail" on "Other Device"</p>
+              <p className="text-xs text-text-muted leading-relaxed">3. Paste the 16-character password above</p>
+              {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Open App Passwords page</a>}
+            </div>
+          )}
+
+          {integ.name === 'imessage' && (
+            <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-2">
+              <p className="text-xs text-text-muted font-semibold">Setup — BlueBubbles (macOS)</p>
+              <p className="text-xs text-text-muted leading-relaxed">1. Install BlueBubbles on your Mac — it bridges iMessage to a REST API</p>
+              <p className="text-xs text-text-muted leading-relaxed">2. Start the server and note the URL (default: http://localhost:1234)</p>
+              <p className="text-xs text-text-muted leading-relaxed">3. Enter your server password above</p>
+              {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Download BlueBubbles</a>}
+            </div>
+          )}
+
+          {integ.name === 'strava' && (
+            <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-2">
+              <p className="text-xs text-text-muted font-semibold">Setup — Strava API</p>
+              <p className="text-xs text-text-muted leading-relaxed">1. Go to <span className="text-teal">strava.com/settings/api</span> and create an app</p>
+              <p className="text-xs text-text-muted leading-relaxed">2. Set Authorization Callback Domain to <code className="text-teal">localhost</code></p>
+              <p className="text-xs text-text-muted leading-relaxed">3. Copy Client ID and Client Secret above, then click Test Connection to complete OAuth</p>
+              {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Strava API docs</a>}
+            </div>
+          )}
+
+          {/* Generic AI model hint with docs link */}
+          {integ.category === 'ai' && !['anthropic', 'openai', 'perplexity', 'ollama'].includes(integ.name) && integ.docs_url && (
+            <div className="flex items-center gap-2">
+              <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal hover:underline">↗ Get API key</a>
+            </div>
+          )}
+          {integ.name === 'ollama' && (
+            <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-1.5">
+              <p className="text-xs text-text-muted leading-relaxed">Run <code className="text-teal">ollama serve</code> locally, then enter the URL above (default: http://localhost:11434).</p>
+              {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Download Ollama</a>}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 pt-2 flex-wrap">
+            {integ.fields.length > 0 && (
+              <AccentButton onClick={() => handleSave(integ.name)}>Save</AccentButton>
+            )}
+            <AccentButton variant="ghost" onClick={() => handleTest(integ.name)} disabled={testing === integ.name}>
+              {testing === integ.name ? 'Testing...' : 'Test Connection'}
+            </AccentButton>
+            {isConnected && (
+              <button
+                onClick={() => handleDisconnect(integ.name)}
+                disabled={disconnecting === integ.name}
+                className="ml-auto px-3 py-2 rounded-xl text-xs border transition-all duration-200 disabled:opacity-50"
+                style={{ color: '#F87171', borderColor: 'rgba(248,113,113,0.25)', background: 'rgba(248,113,113,0.06)' }}
+              >
+                {disconnecting === integ.name ? 'Disconnecting…' : '⊗ Disconnect'}
+              </button>
+            )}
+            {integ.last_tested && !isConnected && (
+              <span className="text-xs text-text-muted font-mono ml-auto">
+                Last tested: {new Date(integ.last_tested).toLocaleString()}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function IntegrationsTab() {
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
+  const [openCategories, setOpenCategories] = useState({ ai: true, productivity: true, communication: false, fitness: false, automation: false });
   const [formData, setFormData] = useState({});
   const [testing, setTesting] = useState(null);
+  const [disconnecting, setDisconnecting] = useState(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -279,6 +639,24 @@ function IntegrationsTab() {
     }));
   };
 
+  const handleDisconnect = async (name) => {
+    setDisconnecting(name);
+    try {
+      await axios.delete(`/api/integrations/${name}`);
+      const r = await axios.get('/api/integrations');
+      setIntegrations(r.data);
+      setExpanded(null);
+      toast.success(`${name} disconnected`);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to disconnect');
+    } finally {
+      setDisconnecting(null);
+    }
+  };
+
+  const toggleCategory = (id) => setOpenCategories(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleInteg = (name) => setExpanded(prev => prev === name ? null : name);
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -287,159 +665,66 @@ function IntegrationsTab() {
     );
   }
 
+  const connectedAiProviders = integrations
+    .filter(i => i.category === 'ai' && (i.status === 'connected' || i.status === 'configured'))
+    .map(i => i.name);
+
   return (
-    <div className="space-y-3">
-      {integrations.map((integ) => {
-        const isOpen = expanded === integ.name;
-        const statusColor =
-          integ.status === 'connected' ? '#22C55E'
-          : integ.status === 'configured' ? '#FBBF24'
-          : integ.status === 'error' ? '#F87171'
-          : '#64748B';
+    <div className="space-y-5">
+      {CATEGORY_META.map((cat) => {
+        const catIntegrations = integrations.filter(i => i.category === cat.id);
+        if (catIntegrations.length === 0) return null;
+        const connectedCount = catIntegrations.filter(i => i.status === 'connected' || i.status === 'configured').length;
+        const isOpen = openCategories[cat.id];
 
         return (
-          <div key={integ.name} className="card">
-            <button className="w-full flex items-center justify-between" onClick={() => setExpanded(isOpen ? null : integ.name)}>
-              <div className="flex items-center gap-3">
-                <span className="text-xl">{integ.icon}</span>
+          <div key={cat.id}>
+            <button
+              className="w-full flex items-center justify-between px-1 py-2 mb-3 group"
+              onClick={() => toggleCategory(cat.id)}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-base">{cat.icon}</span>
                 <div className="text-left">
-                  <p className="font-display font-semibold text-sm text-text-primary">{integ.label}</p>
-                  <p className="text-xs text-text-muted leading-relaxed">{integ.description}</p>
+                  <span className="font-display font-semibold text-sm text-text-primary">{cat.label}</span>
+                  <span className="ml-2 text-xs text-text-muted">{cat.description}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span
-                  className="text-xs px-2.5 py-1 rounded-lg border"
-                  style={{ color: statusColor, borderColor: statusColor + '30', background: statusColor + '08' }}
-                >
-                  {integ.status}
-                </span>
+              <div className="flex items-center gap-2.5">
+                {connectedCount > 0 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ color: '#22C55E', background: '#22C55E14' }}>
+                    {connectedCount} active
+                  </span>
+                )}
+                <span className="text-xs text-text-muted">{catIntegrations.length}</span>
                 <span className="text-text-muted transition-transform duration-200" style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</span>
               </div>
             </button>
 
             {isOpen && (
-              <div className="mt-5 pt-5 border-t border-border space-y-4 fade-in">
-                {integ.fields.map((field) => {
-                  const isSecret = field.key.includes('key') || field.key.includes('token') || field.key.includes('secret');
-                  const Component = isSecret ? MaskedInput : TextInput;
-                  return (
-                    <Component key={field.key} label={field.label} value={formData[integ.name]?.[field.key] || ''} onChange={(v) => updateField(integ.name, field.key, v)} placeholder={field.placeholder} />
-                  );
-                })}
-
-                {integ.name === 'google_calendar' && (
-                  <div className="space-y-3">
-                    <div className="text-xs text-text-muted space-y-1.5 leading-relaxed">
-                      <p>1. Enable Google Calendar API at <span className="text-teal">console.cloud.google.com</span></p>
-                      <p>2. Create OAuth 2.0 credentials (Desktop app)</p>
-                      <p>3. Download as <code className="text-teal">credentials.json</code> to project root</p>
-                      <p>4. Click below to authorize</p>
-                    </div>
-                    <a href="/api/google/auth" target="_blank" rel="noopener noreferrer" className="inline-block px-4 py-2.5 rounded-xl text-xs text-teal border border-teal/30 hover:bg-teal/10 transition-colors">
-                      Connect Google Calendar
-                    </a>
-                  </div>
+              <div className="space-y-2.5 fade-in">
+                {cat.id === 'ai' && (
+                  <ModelSwitcherPanel connectedProviders={connectedAiProviders} />
                 )}
-
-                {integ.name === 'perplexity' && <PerplexityQuery />}
-
-                {integ.name === 'n8n' && (
-                  <div className="space-y-3">
-                    <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border">
-                      <p className="text-xs text-text-muted leading-relaxed">
-                        n8n receives PatternOS events (check-ins, goal completions, reports) as webhook payloads.
-                        Create a Webhook trigger node in n8n and paste the URL above.
-                      </p>
-                      <p className="text-xs text-text-muted mt-2">Events sent: <span className="text-teal">daily_checkin</span>, <span className="text-teal">goal_completed</span>, <span className="text-teal">report_generated</span></p>
-                    </div>
-                    <AccentButton variant="ghost" onClick={async () => {
-                      try {
-                        const r = await axios.post('/api/integrations/n8n/test');
-                        if (r.data.success) toast.success(r.data.message);
-                        else toast.error(r.data.message);
-                      } catch (err) {
-                        toast.error(err.response?.data?.error || 'Failed');
-                      }
-                    }}>
-                      Send Test Event
-                    </AccentButton>
-                  </div>
-                )}
-
-                {integ.name === 'mcp_slashy' && (
-                  <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border">
-                    <p className="text-xs text-text-muted leading-relaxed">
-                      MCP enables PatternOS to connect to any Model Context Protocol server — add tools, data sources, and capabilities from the growing MCP ecosystem.
-                    </p>
-                    {integ.docs_url && <p className="text-xs mt-2"><span className="text-teal">{integ.docs_url}</span></p>}
-                  </div>
-                )}
-
-                {integ.name === 'webhook' && (
-                  <div className="space-y-3">
-                    <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border">
-                      <p className="text-xs text-text-muted leading-relaxed">
-                        When fired, sends a POST with your daily check-in data + logged activities as JSON. Compatible with Zapier, Make, or any webhook receiver.
-                      </p>
-                    </div>
-                    <AccentButton variant="ghost" onClick={async () => {
-                      try {
-                        const r = await axios.post('/api/integrations/webhook/fire');
-                        toast.success(`Webhook fired — HTTP ${r.data.status}`);
-                      } catch (err) {
-                        toast.error(err.response?.data?.error || 'Failed');
-                      }
-                    }}>
-                      Fire Test Webhook
-                    </AccentButton>
-                  </div>
-                )}
-
-                {integ.name === 'gmail' && (
-                  <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-2">
-                    <p className="text-xs text-text-muted font-semibold">Setup — Gmail App Password</p>
-                    <p className="text-xs text-text-muted leading-relaxed">1. Go to your Google Account → Security → 2-Step Verification → App Passwords</p>
-                    <p className="text-xs text-text-muted leading-relaxed">2. Create an app password for "Mail" on "Other Device"</p>
-                    <p className="text-xs text-text-muted leading-relaxed">3. Paste the 16-character password above — PatternOS uses it to send digests to your inbox</p>
-                    {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Open App Passwords page</a>}
-                  </div>
-                )}
-
-                {integ.name === 'imessage' && (
-                  <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-2">
-                    <p className="text-xs text-text-muted font-semibold">Setup — BlueBubbles (macOS)</p>
-                    <p className="text-xs text-text-muted leading-relaxed">1. Install BlueBubbles on your Mac — it bridges iMessage to a REST API</p>
-                    <p className="text-xs text-text-muted leading-relaxed">2. Start the BlueBubbles server and note the URL (default: http://localhost:1234)</p>
-                    <p className="text-xs text-text-muted leading-relaxed">3. Enter your server password above — PatternOS will send check-in reminders to your phone number</p>
-                    {integ.docs_url && <a href={integ.docs_url} target="_blank" rel="noreferrer" className="text-xs text-teal block">↗ Download BlueBubbles</a>}
-                  </div>
-                )}
-
-                {integ.name === 'openai' && (
-                  <div className="px-4 py-3.5 rounded-xl bg-border/20 border border-border space-y-1.5">
-                    <p className="text-xs text-text-muted leading-relaxed">
-                      OpenAI models can be used alongside Claude for secondary analysis, embeddings, and multi-model comparisons. Get your API key at <span className="text-teal">platform.openai.com/api-keys</span>.
-                    </p>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 pt-2">
-                  {integ.fields.length > 0 && (
-                    <AccentButton onClick={() => handleSave(integ.name)}>Save</AccentButton>
-                  )}
-                  <AccentButton variant="ghost" onClick={() => handleTest(integ.name)} disabled={testing === integ.name}>
-                    {testing === integ.name ? 'Testing...' : 'Test Connection'}
-                  </AccentButton>
-                  {integ.last_tested && (
-                    <span className="text-xs text-text-muted font-mono ml-auto">
-                      Last tested: {new Date(integ.last_tested).toLocaleString()}
-                    </span>
-                  )}
-                </div>
+                {catIntegrations.map((integ) => (
+                  <IntegrationCard
+                    key={integ.name}
+                    integ={integ}
+                    expanded={expanded}
+                    onToggle={toggleInteg}
+                    formData={formData}
+                    updateField={updateField}
+                    handleSave={handleSave}
+                    handleTest={handleTest}
+                    handleDisconnect={handleDisconnect}
+                    testing={testing}
+                    disconnecting={disconnecting}
+                  />
+                ))}
               </div>
             )}
+
+            <div className="h-px bg-border/40 mt-5" />
           </div>
         );
       })}
@@ -1455,6 +1740,127 @@ function DataTab() {
           <p><span className="text-teal">NOTION_API_KEY</span>=secret_...</p>
           <p><span className="text-teal">NOTION_DATABASE_ID</span>=...</p>
           <p><span className="text-teal">PORT</span>=3001</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Billing Tab ────────────────────────────────────────
+
+function BillingTab() {
+  const { user, updateUser } = useAuth();
+  const toast = useToast();
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
+  const [nameForm, setNameForm] = useState(user?.name || '');
+  const [modeForm, setModeForm] = useState(user?.mode || 'personal');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  useEffect(() => {
+    axios.get('/api/billing/status').then(r => setStatus(r.data)).catch(() => setStatus(null)).finally(() => setLoading(false));
+  }, []);
+
+  const upgrade = async () => {
+    setRedirecting(true);
+    try {
+      const r = await axios.post('/api/billing/checkout');
+      if (r.data.url) window.location.href = r.data.url;
+      else toast.error(r.data.error || 'Checkout not available');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Billing not configured — set STRIPE_SECRET_KEY');
+    } finally { setRedirecting(false); }
+  };
+
+  const manageSubscription = async () => {
+    setRedirecting(true);
+    try {
+      const r = await axios.post('/api/billing/portal');
+      if (r.data.url) window.location.href = r.data.url;
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Could not open billing portal');
+    } finally { setRedirecting(false); }
+  };
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await updateUser({ name: nameForm, mode: modeForm });
+      toast.success('Profile updated');
+    } catch { toast.error('Failed to save'); }
+    finally { setSavingProfile(false); }
+  };
+
+  const isPro = status?.is_pro;
+
+  return (
+    <div className="space-y-6">
+      {/* Profile */}
+      <div className="card">
+        <h3 className="font-display font-semibold text-sm text-text-primary mb-4">Account</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs text-text-muted block mb-1.5">Display Name</label>
+            <input type="text" value={nameForm} onChange={(e) => setNameForm(e.target.value)} placeholder="Your name" className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-bg text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-teal transition-colors" />
+          </div>
+          <div>
+            <label className="text-xs text-text-muted block mb-1.5">Email</label>
+            <input type="email" value={user?.email || ''} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-bg/50 text-sm text-text-muted cursor-not-allowed" />
+          </div>
+          <div>
+            <label className="text-xs text-text-muted block mb-2">Operating Mode</label>
+            <div className="grid grid-cols-2 gap-2">
+              {[{ id: 'personal', label: 'Personal Mode', desc: 'Whole-self balance' }, { id: 'operator', label: 'Operator Mode', desc: 'Founder execution' }].map(m => (
+                <button key={m.id} onClick={() => setModeForm(m.id)} className="text-left p-3 rounded-xl border transition-all" style={modeForm === m.id ? { borderColor: 'rgba(139,0,0,0.4)', background: 'rgba(139,0,0,0.08)' } : { borderColor: '#252540' }}>
+                  <p className="text-xs font-semibold text-text-primary">{m.label}</p>
+                  <p className="text-[11px] text-text-muted mt-0.5">{m.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+          <AccentButton onClick={saveProfile} disabled={savingProfile}>{savingProfile ? 'Saving…' : 'Save Profile'}</AccentButton>
+        </div>
+      </div>
+
+      {/* Plan */}
+      <div className="card">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="font-display font-semibold text-sm text-text-primary">Plan</h3>
+            {loading ? <div className="h-4 w-16 bg-border rounded animate-pulse mt-1" /> : (
+              <p className="text-xs text-text-muted mt-1">
+                {isPro ? `PatternOS Pro${status?.subscription_end ? ` · renews ${new Date(status.subscription_end).toLocaleDateString()}` : ''}` : 'Free plan — 7 days history, 1 plan/day'}
+              </p>
+            )}
+          </div>
+          <span className={`text-[10px] px-2.5 py-1 rounded-full font-mono ${isPro ? 'text-amber-400 bg-amber-400/10 border border-amber-400/20' : 'text-text-muted bg-border/30 border border-border'}`}>
+            {isPro ? 'Pro' : 'Free'}
+          </span>
+        </div>
+
+        {!isPro && (
+          <div className="rounded-xl p-4 mb-4 space-y-3" style={{ background: 'rgba(139,0,0,0.06)', border: '1px solid rgba(139,0,0,0.15)' }}>
+            <div className="flex items-baseline gap-2">
+              <span className="font-display font-bold text-2xl text-text-primary">$20</span>
+              <span className="text-sm text-text-muted">/ month</span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+              {['Unlimited day plans', 'Full 90-day history', 'AI pattern digests', 'Google Calendar sync', 'Operator Mode', 'All integrations'].map(f => (
+                <div key={f} className="flex items-center gap-1.5 text-xs text-text-muted">
+                  <span className="text-physical text-[10px]">✓</span> {f}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          {!isPro ? (
+            <AccentButton onClick={upgrade} disabled={redirecting}>{redirecting ? 'Redirecting…' : 'Upgrade to Pro →'}</AccentButton>
+          ) : (
+            <AccentButton variant="ghost" onClick={manageSubscription} disabled={redirecting}>Manage Subscription</AccentButton>
+          )}
         </div>
       </div>
     </div>

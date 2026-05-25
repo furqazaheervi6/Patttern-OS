@@ -93,7 +93,7 @@ Generate a weekly digest with these exact sections:
 Be honest, specific, and data-driven. Reference actual numbers. Avoid generic wellness platitudes.`;
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1500,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -139,7 +139,7 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
 or if no alert: {"alert":false}`;
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 200,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -170,7 +170,7 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
 Use null for any field not mentioned. Scores are 1-10. Booleans are true/false.`;
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 500,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -183,4 +183,155 @@ Use null for any field not mentioned. Scores are 1-10. Booleans are true/false.`
   }
 }
 
-module.exports = { generateWeeklyDigest, detectPatternAlerts, extractPillarSignalsFromNotion };
+// Extract pillar signals from full journal text AND upsert a check-in for that date
+async function extractAndApplyPillarSignals(fullText, pageDate) {
+  if (!process.env.ANTHROPIC_API_KEY || !fullText || !pageDate) return null;
+
+  const client = getClient();
+
+  const prompt = `You are PatternOS — reading a personal journal/notes page and extracting health signals.
+
+Journal text:
+${fullText.slice(0, 4000)}
+
+Date of this entry: ${pageDate}
+
+Extract ALL signals you can find. Map them to these exact check-in fields:
+
+PHYSICAL: sleep_hours (number 0-12), energy_score (1-10), nutrition_score (1-10), exercise (boolean — true if any physical activity mentioned)
+
+MENTAL: focus_score (1-10), mood_score (1-10), stress_score (1-10, where 10 = very stressed), learning (boolean — true if any learning/studying mentioned)
+
+FINANCIAL: productive_hours (number 0-16), milestone_hit (boolean — true if goal/milestone achieved), revenue_note (string, brief)
+
+SPIRITUAL: reflection_done (boolean — true if any reflection/journaling/gratitude mentioned), purpose_score (1-10), alignment_score (1-10), gratitude_done (boolean — true if gratitude mentioned)
+
+Also extract human-readable notes per pillar summarizing what the journal says about each.
+
+Respond ONLY with valid JSON (no markdown):
+{
+  "checkin": {
+    "sleep_hours": null,
+    "energy_score": null,
+    "nutrition_score": null,
+    "exercise": null,
+    "focus_score": null,
+    "mood_score": null,
+    "stress_score": null,
+    "learning": null,
+    "productive_hours": null,
+    "milestone_hit": null,
+    "revenue_note": null,
+    "reflection_done": null,
+    "purpose_score": null,
+    "alignment_score": null,
+    "gratitude_done": null
+  },
+  "signals": {
+    "physical": { "notes": "" },
+    "mental": { "notes": "" },
+    "financial": { "notes": "" },
+    "spiritual": { "notes": "" }
+  },
+  "summary": "one-sentence summary of the whole entry"
+}
+
+Use null for fields not mentioned. At minimum, infer booleans from context (e.g. if they mention going for a run, exercise = true).`;
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  let parsed;
+  try {
+    const text = response.content[0].text.trim().replace(/```json\n?|\n?```/g, '').trim();
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+
+  // Upsert a check-in for this date using the extracted data
+  if (parsed?.checkin && pageDate) {
+    try {
+      const { computeAllScores } = require('../utils/pillarScorer');
+      const data = parsed.checkin;
+      const scores = computeAllScores(data);
+
+      // Only write fields that Claude actually found (not null)
+      // Use COALESCE so we don't overwrite manual check-ins with nulls
+      const hasAnyData = Object.values(data).some(v => v !== null && v !== undefined);
+      if (hasAnyData) {
+        await execute(
+          `INSERT INTO checkins (
+            date, sleep_hours, exercise, energy_score, nutrition_score,
+            focus_score, mood_score, stress_score, learning,
+            productive_hours, milestone_hit, revenue_note,
+            reflection_done, purpose_score, gratitude_done, alignment_score,
+            physical_score, mental_score, financial_score, spiritual_score, overall_score,
+            updated_at
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+          ON CONFLICT(date) DO UPDATE SET
+            sleep_hours    = COALESCE(EXCLUDED.sleep_hours, checkins.sleep_hours),
+            exercise       = COALESCE(EXCLUDED.exercise, checkins.exercise),
+            energy_score   = COALESCE(EXCLUDED.energy_score, checkins.energy_score),
+            nutrition_score= COALESCE(EXCLUDED.nutrition_score, checkins.nutrition_score),
+            focus_score    = COALESCE(EXCLUDED.focus_score, checkins.focus_score),
+            mood_score     = COALESCE(EXCLUDED.mood_score, checkins.mood_score),
+            stress_score   = COALESCE(EXCLUDED.stress_score, checkins.stress_score),
+            learning       = COALESCE(EXCLUDED.learning, checkins.learning),
+            productive_hours = COALESCE(EXCLUDED.productive_hours, checkins.productive_hours),
+            milestone_hit  = COALESCE(EXCLUDED.milestone_hit, checkins.milestone_hit),
+            revenue_note   = COALESCE(EXCLUDED.revenue_note, checkins.revenue_note),
+            reflection_done= COALESCE(EXCLUDED.reflection_done, checkins.reflection_done),
+            purpose_score  = COALESCE(EXCLUDED.purpose_score, checkins.purpose_score),
+            gratitude_done = COALESCE(EXCLUDED.gratitude_done, checkins.gratitude_done),
+            alignment_score= COALESCE(EXCLUDED.alignment_score, checkins.alignment_score),
+            physical_score = GREATEST(COALESCE(EXCLUDED.physical_score, 0), COALESCE(checkins.physical_score, 0)),
+            mental_score   = GREATEST(COALESCE(EXCLUDED.mental_score, 0), COALESCE(checkins.mental_score, 0)),
+            financial_score= GREATEST(COALESCE(EXCLUDED.financial_score, 0), COALESCE(checkins.financial_score, 0)),
+            spiritual_score= GREATEST(COALESCE(EXCLUDED.spiritual_score, 0), COALESCE(checkins.spiritual_score, 0)),
+            overall_score  = GREATEST(COALESCE(EXCLUDED.overall_score, 0), COALESCE(checkins.overall_score, 0)),
+            updated_at     = EXCLUDED.updated_at`,
+          [
+            pageDate,
+            data.sleep_hours ?? null,
+            data.exercise != null ? (data.exercise ? 1 : 0) : null,
+            data.energy_score ?? null,
+            data.nutrition_score ?? null,
+            data.focus_score ?? null,
+            data.mood_score ?? null,
+            data.stress_score ?? null,
+            data.learning != null ? (data.learning ? 1 : 0) : null,
+            data.productive_hours ?? null,
+            data.milestone_hit != null ? (data.milestone_hit ? 1 : 0) : null,
+            data.revenue_note ?? null,
+            data.reflection_done != null ? (data.reflection_done ? 1 : 0) : null,
+            data.purpose_score ?? null,
+            data.gratitude_done != null ? (data.gratitude_done ? 1 : 0) : null,
+            data.alignment_score ?? null,
+            scores.physical_score,
+            scores.mental_score,
+            scores.financial_score,
+            scores.spiritual_score,
+            scores.overall_score,
+            new Date().toISOString(),
+          ]
+        );
+        console.log(`[Notion→Checkin] Applied signals for ${pageDate}`);
+      }
+    } catch (err) {
+      console.error(`[Notion→Checkin] Failed to write checkin for ${pageDate}:`, err.message);
+    }
+  }
+
+  return { signals: parsed.signals, summary: parsed.summary, checkin: parsed.checkin };
+}
+
+module.exports = {
+  generateWeeklyDigest,
+  detectPatternAlerts,
+  extractPillarSignalsFromNotion,
+  extractAndApplyPillarSignals,
+};

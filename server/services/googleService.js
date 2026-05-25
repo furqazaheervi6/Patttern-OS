@@ -220,12 +220,20 @@ async function createEventsBatch(blocks, timeZone) {
     try {
       const ev = planBlockToGCalEvent(block, timeZone);
       const created = await createEvent(ev);
-      results.push({ success: true, id: created.id, title: block.title, pillar: block.pillar });
+      results.push({ success: true, id: created.id, block_id: block.id || null, title: block.title, pillar: block.pillar });
     } catch (err) {
-      results.push({ success: false, title: block.title, error: err.message });
+      results.push({ success: false, block_id: block.id || null, title: block.title, error: err.message });
     }
   }
   return results;
 }
 
-module.exports = { getUpcomingEvents, getEventsForDate, getEventsInRange, getAuthUrl, handleCallback, credentialsExist, tokenExists, tokenExistsAsync, createEvent, createEventsBatch, planBlockToGCalEvent };
+async function deleteEvent(eventId) {
+  if (!eventId) return;
+  const auth = await getAuthClient();
+  if (!auth) throw new Error('Google Calendar not connected');
+  const calendar = google.calendar({ version: 'v3', auth });
+  await calendar.events.delete({ calendarId: 'primary', eventId, sendUpdates: 'none' });
+}
+
+module.exports = { getUpcomingEvents, getEventsForDate, getEventsInRange, getAuthUrl, handleCallback, credentialsExist, tokenExists, tokenExistsAsync, createEvent, createEventsBatch, planBlockToGCalEvent, deleteEvent };

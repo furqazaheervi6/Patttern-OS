@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import axios from 'axios';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
@@ -689,6 +690,7 @@ function NotConnected() {
 // ── Main Calendar Page ────────────────────────────────────
 
 export default function CalendarPage() {
+  const { user } = useAuth();
   const [view, setView] = useState('month');
   const [current, setCurrent] = useState(new Date());
   const [selected, setSelected] = useState(new Date());
@@ -789,24 +791,34 @@ export default function CalendarPage() {
     return () => window.removeEventListener('patternos:planactions', handler);
   }, []);
 
-  const generatePlan = useCallback(async (dates) => {
+  const generatePlan = useCallback(async (dates, { replan = false } = {}) => {
     setPlanning(true); setPlanError(null); setPlanMenuOpen(false); setGoalSetup(null);
     try {
       const dateSet = new Set(dates);
       const relevantEvents = events.filter(e => dateSet.has(format(eventStart(e), 'yyyy-MM-dd')));
+      // Fetch active initiatives to thread into planner
+      let initiatives = [];
+      try {
+        const ir = await axios.get('/api/initiatives');
+        initiatives = ir.data.filter(i => i.status === 'active').slice(0, 5);
+      } catch {}
+
       const res = await axios.post('/api/calendar/plan', {
         dates,
         existingEvents: relevantEvents,
         goals,
         checkin: checkins[0] || null,
         history: checkins.slice(0, 7),
+        replan,
+        mode: user?.mode || 'personal',
+        initiatives,
       });
       const { schedule } = res.data;
       if (!Array.isArray(schedule) || schedule.length === 0) {
         setPlanError('No schedule returned. Try again.');
         return;
       }
-      // Group blocks by date and merge into state
+      // Group blocks by date; on replan, replace existing date entries entirely
       const grouped = {};
       for (const block of schedule) {
         const d = block.date;
@@ -814,7 +826,9 @@ export default function CalendarPage() {
         grouped[d].push(block);
       }
       setPlanBlocks(prev => {
-        const next = { ...prev, ...grouped };
+        const next = replan
+          ? { ...prev, ...grouped }          // replace dates being replanned
+          : { ...prev, ...grouped };          // same for normal plan
         savePlan(next);
         return next;
       });
@@ -990,7 +1004,7 @@ export default function CalendarPage() {
         {/* Re-plan button — day view only, when plan already exists */}
         {view === 'day' && hasPlan && !planning && (
           <button
-            onClick={() => { clearPlan(selected); initiateGenerate([format(selected, 'yyyy-MM-dd')]); }}
+            onClick={() => { generatePlan([format(selected, 'yyyy-MM-dd')], { replan: true }); }}
             title="Clear and regenerate today's plan"
             style={{
               padding: '5px 12px', borderRadius: '7px',

@@ -1,45 +1,58 @@
 /**
- * Local development cron jobs.
- * In production (Vercel), cron jobs are handled by Vercel Cron (see vercel.json + routes/cron.js).
- * This file is only used when running locally with `npm run server`.
+ * Background jobs — runs locally via setInterval.
+ * In production (Vercel), use vercel.json cron + routes/cron.js.
  */
 
+let syncInterval = null;
+let isSyncing = false;
+
 function startCronJobs() {
-  // No-op in serverless / production
   if (process.env.VERCEL) return;
 
-  try {
-    const cron = require('node-cron');
-    const { generateWeeklyDigest } = require('./claudeAgent');
-    const { fetchRecentPages } = require('./notionService');
+  // Import lazily to avoid circular deps at startup
+  const runNotionSync = async () => {
+    if (isSyncing) return;
+    isSyncing = true;
+    try {
+      const { syncAndEnrichAll } = require('./notionService');
+      await syncAndEnrichAll();
+    } catch (err) {
+      console.error('[Cron] Notion sync error:', err.message);
+    } finally {
+      isSyncing = false;
+    }
+  };
 
-    // Weekly digest — every Monday at 8:00 AM
-    cron.schedule('0 8 * * 1', async () => {
-      console.log('Cron: Running weekly digest generation...');
-      try {
-        await generateWeeklyDigest();
-        console.log('Cron: Weekly digest generated.');
-      } catch (err) {
-        console.error('Cron: Digest generation failed:', err.message);
-      }
-    });
+  const runWeeklyDigest = async () => {
+    try {
+      const { generateWeeklyDigest } = require('./claudeAgent');
+      await generateWeeklyDigest();
+      console.log('[Cron] Weekly digest generated');
+    } catch (err) {
+      console.error('[Cron] Digest error:', err.message);
+    }
+  };
 
-    // Notion sync — every day at 6:00 AM
-    cron.schedule('0 6 * * *', async () => {
-      console.log('Cron: Syncing Notion pages...');
-      try {
-        await fetchRecentPages(7);
-        console.log('Cron: Notion sync complete.');
-      } catch (err) {
-        console.error('Cron: Notion sync failed:', err.message);
-      }
-    });
+  // First sync 2 minutes after startup (let the server settle), then every 15 minutes
+  setTimeout(runNotionSync, 2 * 60 * 1000);
+  syncInterval = setInterval(runNotionSync, 15 * 60 * 1000);
 
-    console.log('  Local cron jobs started');
-  } catch {
-    // node-cron not installed — that's fine in production
-    console.log('  Cron: node-cron not available, skipping local cron jobs');
+  // Weekly digest every Monday at 8 AM (check via interval)
+  setInterval(() => {
+    const now = new Date();
+    if (now.getDay() === 1 && now.getHours() === 8 && now.getMinutes() < 5) {
+      runWeeklyDigest();
+    }
+  }, 5 * 60 * 1000);
+
+  console.log('  Background sync: Notion every 10 min, digest weekly');
+}
+
+function stopCronJobs() {
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
   }
 }
 
-module.exports = { startCronJobs };
+module.exports = { startCronJobs, stopCronJobs };
