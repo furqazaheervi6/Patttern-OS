@@ -1,7 +1,52 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { pillarColor, localDateStr } from '../utils/formatters.js';
 import ActivityLogger from './ActivityLogger.jsx';
+
+// Mirror of server/utils/pillarScorer.js — kept in sync
+function computeScores(f) {
+  const physical = Math.round(
+    Math.min(((f.sleep_hours || 0) / 8) * 25, 25) +
+    (f.exercise ? 25 : 0) +
+    ((f.energy_score || 0) / 10) * 25 +
+    ((f.nutrition_score || 0) / 10) * 25
+  );
+  const mental = Math.round(
+    ((f.focus_score || 0) / 10) * 30 +
+    ((f.mood_score || 0) / 10) * 30 +
+    ((10 - (f.stress_score || 5)) / 10) * 25 +
+    (f.learning ? 15 : 0)
+  );
+  const financial = Math.round(
+    Math.min(((f.productive_hours || 0) / 8) * 50, 50) +
+    (f.milestone_hit ? 30 : 0) +
+    (f.revenue_note && f.revenue_note !== '$0' && f.revenue_note.trim() ? 20 : 0)
+  );
+  const spiritual = Math.round(
+    (f.reflection_done ? 25 : 0) +
+    ((f.purpose_score || 0) / 10) * 30 +
+    (f.gratitude_done ? 20 : 0) +
+    ((f.alignment_score || 0) / 10) * 25
+  );
+  const overall = Math.round((physical + mental + financial + spiritual) / 4);
+  return { physical, mental, financial, spiritual, overall };
+}
+
+const SCORE_COLORS = { physical: '#22C55E', mental: '#60A5FA', financial: '#FBBF24', spiritual: '#C084FC' };
+
+function LiveScoreBar({ label, value, color }) {
+  const [w, setW] = React.useState(0);
+  React.useEffect(() => { const t = setTimeout(() => setW(value), 50); return () => clearTimeout(t); }, [value]);
+  return (
+    <div className="flex items-center gap-2">
+      <span style={{ fontSize: '0.52rem', color: '#4A4A68', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'DM Mono, monospace', width: '52px', textAlign: 'right', flexShrink: 0 }}>{label}</span>
+      <div style={{ flex: 1, height: '3px', background: 'rgba(37,37,64,0.8)', borderRadius: '2px', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${w}%`, background: `linear-gradient(90deg, ${color}80, ${color})`, borderRadius: '2px', transition: 'width 0.5s cubic-bezier(0.16,1,0.3,1)' }} />
+      </div>
+      <span style={{ fontSize: '0.62rem', color, fontFamily: 'DM Mono, monospace', width: '26px', textAlign: 'right', flexShrink: 0 }}>{value}</span>
+    </div>
+  );
+}
 
 const DEFAULT = {
   sleep_hours: 7,
@@ -99,6 +144,7 @@ export default function CheckIn({ existing, onClose, onSaved }) {
   const [toast, setToast] = useState(null);
 
   const set = (name, val) => setForm((prev) => ({ ...prev, [name]: val }));
+  const scores = useMemo(() => computeScores(form), [form]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -130,24 +176,41 @@ export default function CheckIn({ existing, onClose, onSaved }) {
         className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-surface shadow-2xl slide-up"
       >
         {/* Header */}
-        <div className="sticky top-0 bg-surface border-b border-border px-6 py-4 flex items-center justify-between z-10">
-          <div>
-            <h2 className="font-display font-bold text-text-primary">Daily Check-In</h2>
-            <p className="text-xs text-text-muted mt-0.5">
-              {new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}{' '}
-              · ~90 seconds
-            </p>
+        <div className="sticky top-0 bg-surface border-b border-border px-6 py-4 z-10">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="font-display font-bold text-text-primary">Daily Check-In</h2>
+              <p className="text-xs text-text-muted mt-0.5">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                {' '}· ~90 seconds
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '0.5rem', color: '#4A4A68', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '1px' }}>Overall</p>
+                <span style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: scores.overall >= 70 ? '#22C55E' : scores.overall >= 45 ? '#FBBF24' : '#F87171', lineHeight: 1 }}>
+                  {scores.overall}
+                </span>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-text-muted hover:text-text-primary text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-border transition-colors"
+              >
+                ×
+              </button>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-text-muted hover:text-text-primary text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-border transition-colors"
-          >
-            ×
-          </button>
+          {/* Live pillar score bars */}
+          <div className="space-y-1.5">
+            {[
+              { key: 'physical', label: 'Phys' },
+              { key: 'mental', label: 'Mind' },
+              { key: 'financial', label: 'Work' },
+              { key: 'spiritual', label: 'Soul' },
+            ].map(({ key, label }) => (
+              <LiveScoreBar key={key} label={label} value={scores[key]} color={SCORE_COLORS[key]} />
+            ))}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
