@@ -49,7 +49,6 @@ function AuthGate({ children }) {
 
 function AppShell() {
   const [chatOpen, setChatOpen] = useState(true);
-  const [checkinOpen, setCheckinOpen] = useState(false);
   const { user } = useAuth();
 
   return (
@@ -83,7 +82,7 @@ function AppShell() {
         </ErrorBoundary>
       </main>
       {user && <ChatBot open={chatOpen} onToggle={() => setChatOpen(v => !v)} />}
-      {user && <CommandPalette onCheckinOpen={() => setCheckinOpen(true)} />}
+      {user && <CommandPalette />}
       <MobileTabBar />
     </div>
   );

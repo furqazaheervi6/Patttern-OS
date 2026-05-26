@@ -13,13 +13,13 @@ const NAV_COMMANDS = [
 ];
 
 const ACTION_COMMANDS = [
-  { id: 'checkin',  icon: '◎', label: 'Log Check-In',         action: 'checkin' },
-  { id: 'plan',     icon: '▶', label: 'Generate Day Plan',    path: '/calendar', highlight: 'plan' },
-  { id: 'init',     icon: '◈', label: 'New Initiative',       path: '/initiatives', highlight: 'add' },
+  { id: 'checkin',  icon: '◎', label: 'Log Check-In',         path: '/?checkin=1' },
+  { id: 'plan',     icon: '▶', label: 'Generate Day Plan',    path: '/calendar' },
+  { id: 'init',     icon: '◈', label: 'New Initiative',       path: '/initiatives' },
   { id: 'pattern',  icon: '⬟', label: 'Launch a Pattern',    path: '/patterns' },
 ];
 
-export default function CommandPalette({ onCheckinOpen }) {
+export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -54,12 +54,8 @@ export default function CommandPalette({ onCheckinOpen }) {
   const execute = useCallback((cmd) => {
     setOpen(false);
     setQuery('');
-    if (cmd.action === 'checkin') {
-      onCheckinOpen?.();
-    } else if (cmd.path) {
-      navigate(cmd.path);
-    }
-  }, [navigate, onCheckinOpen]);
+    if (cmd.path) navigate(cmd.path);
+  }, [navigate]);
 
   useEffect(() => {
     if (!open) return;

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import PillarCard from '../components/PillarCard.jsx';
 import TrendChart from '../components/TrendChart.jsx';
@@ -88,6 +88,15 @@ export default function Home() {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const { thisWeek, lastWeek } = useWeekComparison(history);
   const isOperator = user?.mode === 'operator';
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-open check-in if navigated here with ?checkin=1 (from command palette)
+  useEffect(() => {
+    if (searchParams.get('checkin') === '1') {
+      setShowCheckIn(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   if (loading) return <DashboardSkeleton />;
 
