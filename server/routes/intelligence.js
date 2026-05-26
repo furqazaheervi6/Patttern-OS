@@ -63,14 +63,39 @@ function buildFallbackInsights(ctx) {
     });
   }
 
-  while (insights.length < 3) {
-    insights.push({
+  // Distinct fallback insights so there are no duplicates
+  const fallbacks = [
+    {
       priority: 'low',
       icon: '✦',
-      title: 'Keep the streak going',
-      body: 'Consistent daily check-ins unlock pattern detection — the longer the streak, the smarter your insights.',
-      action: 'Complete today\'s check-in',
-    });
+      title: 'Start your intelligence loop',
+      body: 'Complete your first daily check-in. PatternOS needs 3+ days of data to surface meaningful patterns and recommendations.',
+      action: "Log today's check-in from the Dashboard",
+    },
+    {
+      priority: 'low',
+      icon: '◷',
+      title: 'Generate your first AI day plan',
+      body: 'Go to Calendar → Plan My Day. PatternOS will generate a pillar-balanced schedule around your goals and existing commitments.',
+      action: 'Open Calendar → Plan My Day',
+    },
+    {
+      priority: 'low',
+      icon: '◈',
+      title: 'Set a goal for each pillar',
+      body: 'Goals anchor your AI day plans. Without them, plans are generic. Add at least one goal per pillar for maximum precision.',
+      action: 'Add goals in Initiatives',
+    },
+  ];
+
+  let fi = 0;
+  while (insights.length < 3) {
+    const candidate = fallbacks[fi % fallbacks.length];
+    if (!insights.some(i => i.title === candidate.title)) {
+      insights.push(candidate);
+    }
+    fi++;
+    if (fi > fallbacks.length * 2) break; // safety
   }
 
   return insights.slice(0, 3);

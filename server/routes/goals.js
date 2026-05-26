@@ -19,7 +19,7 @@ router.get('/', optionalAuth, async (req, res) => {
       sql += ' AND domain = ?';
       params.push(domain);
     }
-    sql += ' ORDER BY priority DESC, created_at DESC';
+    sql += ` ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, created_at DESC`;
 
     const rows = await query(sql, params);
     res.json(rows);
