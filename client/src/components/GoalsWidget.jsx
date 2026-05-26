@@ -54,7 +54,8 @@ export default function GoalsWidget() {
   useEffect(() => {
     axios.get('/api/goals')
       .then(r => {
-        const active = (r.data || []).filter(g => g.active === 1 && g.completed === 0);
+        const isTrue = v => v === true || v === 1 || v === '1' || v === 't';
+        const active = (r.data || []).filter(g => isTrue(g.active) && !isTrue(g.completed));
         setGoals(active.slice(0, 4));
       })
       .catch(() => {})

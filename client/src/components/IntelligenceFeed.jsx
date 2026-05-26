@@ -67,13 +67,18 @@ function InsightCard({ insight, index }) {
 export default function IntelligenceFeed({ compact = false }) {
   const [insights, setInsights] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    axios.get('/api/intelligence/feed')
+  const fetchInsights = (force = false) => {
+    if (force) setRefreshing(true);
+    else setLoading(true);
+    axios.get(`/api/intelligence/feed${force ? '?force=1' : ''}`)
       .then(r => setInsights(r.data.insights || []))
-      .catch(() => setInsights([]))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(() => {})
+      .finally(() => { setLoading(false); setRefreshing(false); });
+  };
+
+  useEffect(() => { fetchInsights(); }, []);
 
   if (loading) {
     return (
@@ -88,10 +93,35 @@ export default function IntelligenceFeed({ compact = false }) {
   if (insights.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      {insights.slice(0, compact ? 2 : 3).map((ins, i) => (
-        <InsightCard key={i} insight={ins} index={i} />
-      ))}
+    <div>
+      <div className="space-y-2">
+        {insights.slice(0, compact ? 2 : 3).map((ins, i) => (
+          <InsightCard key={i} insight={ins} index={i} />
+        ))}
+      </div>
+      <button
+        onClick={() => fetchInsights(true)}
+        disabled={refreshing}
+        style={{
+          marginTop: '8px',
+          fontSize: '0.56rem',
+          color: refreshing ? '#3A3A50' : '#4A4A68',
+          fontFamily: 'DM Mono, monospace',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          background: 'transparent',
+          border: 'none',
+          cursor: refreshing ? 'default' : 'pointer',
+          padding: '2px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          transition: 'color 0.15s',
+        }}
+      >
+        <span className={refreshing ? 'animate-spin' : ''} style={{ display: 'inline-block' }}>↺</span>
+        {refreshing ? 'Refreshing…' : 'Refresh insights'}
+      </button>
     </div>
   );
 }

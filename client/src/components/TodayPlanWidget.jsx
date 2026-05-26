@@ -70,6 +70,15 @@ function BlockRow({ block }) {
   );
 }
 
+function loadLocalPlan(date) {
+  try {
+    const plan = JSON.parse(localStorage.getItem('patternos_dayplan') || '{}');
+    return plan[date] || [];
+  } catch {
+    return [];
+  }
+}
+
 export default function TodayPlanWidget() {
   const navigate = useNavigate();
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -77,6 +86,14 @@ export default function TodayPlanWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Prefer localStorage (kept in sync by Calendar + ChatBot) for instant load.
+    // Fall back to API if localStorage is empty (e.g. plan generated on another device).
+    const local = loadLocalPlan(today);
+    if (local.length > 0) {
+      setBlocks(local);
+      setLoading(false);
+      return;
+    }
     axios.get(`/api/calendar/blocks?date=${today}`)
       .then(r => setBlocks(r.data.blocks || []))
       .catch(() => setBlocks([]))
