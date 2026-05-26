@@ -258,9 +258,13 @@ export default function ChatBot({ open, onToggle }) {
     const apiMessages = history.map(m => ({ role: m.role, content: m.content }));
 
     try {
+      const authToken = localStorage.getItem('patternos_token');
       const res = await fetch('/api/chat', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+        },
         body:    JSON.stringify({
           messages: apiMessages,
           model,
