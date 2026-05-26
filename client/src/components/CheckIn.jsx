@@ -142,6 +142,7 @@ export default function CheckIn({ existing, onClose, onSaved }) {
   const [form, setForm] = useState(existing ? { ...DEFAULT, ...existing } : { ...DEFAULT });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const [savedScores, setSavedScores] = useState(null);
 
   const set = (name, val) => setForm((prev) => ({ ...prev, [name]: val }));
   const scores = useMemo(() => computeScores(form), [form]);
@@ -154,11 +155,14 @@ export default function CheckIn({ existing, onClose, onSaved }) {
         ...form,
         date: localDateStr(),
       });
-      setToast('✓ Check-in saved!');
+      const s = res.data?.scores || res.data?.checkin;
+      setSavedScores(s);
+      // Signal intelligence feed to refresh with new data
+      window.dispatchEvent(new CustomEvent('patternos:checkin_saved', { detail: res.data }));
       setTimeout(() => {
         onSaved?.(res.data);
         onClose?.();
-      }, 800);
+      }, 2200);
     } catch (err) {
       setToast('Error: ' + (err.response?.data?.error || err.message));
     } finally {
@@ -357,6 +361,42 @@ export default function CheckIn({ existing, onClose, onSaved }) {
         {toast && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-surface border border-border text-sm font-mono text-text-primary shadow-xl fade-in">
             {toast}
+          </div>
+        )}
+
+        {savedScores && (
+          <div
+            className="absolute inset-0 flex items-center justify-center fade-in"
+            style={{ background: 'rgba(8,8,16,0.97)', borderRadius: '1rem', zIndex: 20 }}
+          >
+            <div className="text-center px-8">
+              <p style={{ fontSize: '0.52rem', color: '#4A4A68', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '8px' }}>
+                Today's Score
+              </p>
+              <p style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '4rem', fontWeight: 700, color: (savedScores.overall_score ?? scores.overall) >= 70 ? '#22C55E' : (savedScores.overall_score ?? scores.overall) >= 45 ? '#FBBF24' : '#F87171', lineHeight: 1, marginBottom: '20px' }}>
+                {savedScores.overall_score ?? scores.overall}
+              </p>
+              <div className="space-y-2 mb-4">
+                {[
+                  { key: 'physical_score', label: 'Physical',  color: '#22C55E', local: scores.physical },
+                  { key: 'mental_score',   label: 'Mental',    color: '#60A5FA', local: scores.mental },
+                  { key: 'financial_score',label: 'Financial', color: '#FBBF24', local: scores.financial },
+                  { key: 'spiritual_score',label: 'Spiritual', color: '#C084FC', local: scores.spiritual },
+                ].map(({ key, label, color, local }) => {
+                  const val = savedScores[key] ?? local;
+                  return (
+                    <div key={key} className="flex items-center gap-3">
+                      <span style={{ width: '56px', textAlign: 'right', fontSize: '0.55rem', color: '#4A4A68', fontFamily: 'DM Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</span>
+                      <div style={{ flex: 1, height: '3px', background: 'rgba(37,37,64,0.8)', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${val}%`, background: `linear-gradient(90deg, ${color}80, ${color})`, borderRadius: '2px' }} />
+                      </div>
+                      <span style={{ width: '28px', fontSize: '0.65rem', color, fontFamily: 'DM Mono, monospace' }}>{val}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: '0.6rem', color: '#3A3A50', fontFamily: 'DM Mono, monospace' }}>✓ Saved · Intelligence updating…</p>
+            </div>
           </div>
         )}
       </div>

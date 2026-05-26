@@ -85,9 +85,7 @@ export default function TodayPlanWidget() {
   const [blocks, setBlocks] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Prefer localStorage (kept in sync by Calendar + ChatBot) for instant load.
-    // Fall back to API if localStorage is empty (e.g. plan generated on another device).
+  const reload = React.useCallback(() => {
     const local = loadLocalPlan(today);
     if (local.length > 0) {
       setBlocks(local);
@@ -99,6 +97,22 @@ export default function TodayPlanWidget() {
       .catch(() => setBlocks([]))
       .finally(() => setLoading(false));
   }, [today]);
+
+  useEffect(() => {
+    // Prefer localStorage (kept in sync by Calendar + ChatBot) for instant load.
+    // Fall back to API if localStorage is empty (e.g. plan generated on another device).
+    reload();
+
+    // React to plan changes dispatched by ChatBot or Calendar
+    window.addEventListener('patternos:planactions', reload);
+    // React to plan changes in another tab
+    const onStorage = (e) => { if (e.key === 'patternos_dayplan') reload(); };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('patternos:planactions', reload);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [reload]);
 
   const now = new Date();
   const curMin = now.getHours() * 60 + now.getMinutes();

@@ -78,7 +78,13 @@ export default function IntelligenceFeed({ compact = false }) {
       .finally(() => { setLoading(false); setRefreshing(false); });
   };
 
-  useEffect(() => { fetchInsights(); }, []);
+  useEffect(() => {
+    fetchInsights();
+    // Re-generate when a new check-in is saved (new data invalidates today's cache)
+    const onCheckin = () => fetchInsights(true);
+    window.addEventListener('patternos:checkin_saved', onCheckin);
+    return () => window.removeEventListener('patternos:checkin_saved', onCheckin);
+  }, []);
 
   if (loading) {
     return (
