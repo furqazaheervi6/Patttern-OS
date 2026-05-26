@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
+// Map common action phrases to app routes
+function resolveActionRoute(action) {
+  if (!action) return null;
+  const a = action.toLowerCase();
+  if (a.includes('calendar') || a.includes('plan my day') || a.includes('day plan') || a.includes('schedule')) return '/calendar';
+  if (a.includes('initiative') || a.includes('goal') || a.includes('set goal') || a.includes('add goal')) return '/initiatives';
+  if (a.includes('check-in') || a.includes('checkin') || a.includes('log today')) return '/?checkin=1';
+  if (a.includes('history') || a.includes('trend') || a.includes('pattern')) return '/history';
+  if (a.includes('digest') || a.includes('weekly')) return '/digest';
+  if (a.includes('pattern') || a.includes('launch')) return '/patterns';
+  return null;
+}
 
 const PRIORITY_STYLE = {
   high:   { dot: '#F87171', border: 'rgba(248,113,113,0.15)', bg: 'rgba(248,113,113,0.04)' },
@@ -8,7 +22,10 @@ const PRIORITY_STYLE = {
 };
 
 function InsightCard({ insight, index }) {
+  const navigate = useNavigate();
   const s = PRIORITY_STYLE[insight.priority] || PRIORITY_STYLE.low;
+  const route = resolveActionRoute(insight.action);
+
   return (
     <div
       className="rounded-xl p-4 fade-in"
@@ -43,7 +60,8 @@ function InsightCard({ insight, index }) {
           <p style={{ fontSize: '0.7rem', color: '#5A5A72', lineHeight: 1.5, marginBottom: '8px' }}>
             {insight.body}
           </p>
-          <span
+          <button
+            onClick={() => route && navigate(route)}
             style={{
               fontSize: '0.62rem',
               color: '#8B0000',
@@ -54,10 +72,14 @@ function InsightCard({ insight, index }) {
               fontFamily: 'DM Mono, monospace',
               letterSpacing: '0.05em',
               textTransform: 'uppercase',
+              cursor: route ? 'pointer' : 'default',
+              transition: 'background 0.15s, border-color 0.15s',
             }}
+            onMouseEnter={e => { if (route) { e.currentTarget.style.background = 'rgba(139,0,0,0.2)'; e.currentTarget.style.borderColor = 'rgba(139,0,0,0.4)'; } }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,0,0,0.1)'; e.currentTarget.style.borderColor = 'rgba(139,0,0,0.2)'; }}
           >
             → {insight.action}
-          </span>
+          </button>
         </div>
       </div>
     </div>
