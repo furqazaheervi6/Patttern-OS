@@ -5,6 +5,7 @@ import MobileTabBar from './components/MobileTabBar.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import ChatBot from './components/ChatBot.jsx';
+import CommandPalette from './components/CommandPalette.jsx';
 import { DashboardSkeleton, EvolutionSkeleton } from './components/Skeleton.jsx';
 import HellenicBackground from './components/HellenicBackground.jsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
@@ -48,6 +49,7 @@ function AuthGate({ children }) {
 
 function AppShell() {
   const [chatOpen, setChatOpen] = useState(true);
+  const [checkinOpen, setCheckinOpen] = useState(false);
   const { user } = useAuth();
 
   return (
@@ -81,6 +83,7 @@ function AppShell() {
         </ErrorBoundary>
       </main>
       {user && <ChatBot open={chatOpen} onToggle={() => setChatOpen(v => !v)} />}
+      {user && <CommandPalette onCheckinOpen={() => setCheckinOpen(true)} />}
       <MobileTabBar />
     </div>
   );

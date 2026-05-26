@@ -274,9 +274,19 @@ export default function Sidebar() {
           </div>
         )}
 
+        {/* Command palette hint */}
+        <button
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg mt-1 transition-colors hover:bg-[rgba(37,37,64,0.4)]"
+          onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+          style={{ border: '1px solid #1C1C2E' }}
+        >
+          <span style={{ fontSize: '0.62rem', color: '#3A3A50', fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em' }}>Search & Jump</span>
+          <kbd style={{ fontSize: '0.58rem', color: '#3A3A50', background: '#1C1C2E', border: '1px solid #252540', borderRadius: '4px', padding: '1px 5px', fontFamily: 'DM Mono, monospace' }}>⌘K</kbd>
+        </button>
+
         {/* User footer */}
         {user && (
-          <div className="mt-4 pt-3" style={{ borderTop: '1px solid #252540' }}>
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid #252540' }}>
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p style={{ fontSize: '0.7rem', color: '#C9C9C9', fontWeight: 600, truncate: true }}
