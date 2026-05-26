@@ -238,6 +238,7 @@ router.post('/plan', optionalAuth, async (req, res) => {
       endpoint: 'calendar/plan',
       inputTokens: msg.usage?.input_tokens ?? 0,
       outputTokens: msg.usage?.output_tokens ?? 0,
+      userId,
     });
 
     let text = (msg.content[0]?.text || '').trim()

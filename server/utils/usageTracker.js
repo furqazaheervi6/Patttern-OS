@@ -35,13 +35,13 @@ function calcCost(model, inputTokens, outputTokens) {
   return (inputTokens / 1_000_000) * p.input + (outputTokens / 1_000_000) * p.output;
 }
 
-async function logUsage({ provider, model, endpoint, inputTokens = 0, outputTokens = 0 }) {
+async function logUsage({ provider, model, endpoint, inputTokens = 0, outputTokens = 0, userId = null }) {
   try {
     const cost = calcCost(model, inputTokens, outputTokens);
     await execute(
-      `INSERT INTO api_usage_log (provider, model, endpoint, input_tokens, output_tokens, cost_usd)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [provider, model, endpoint || null, inputTokens, outputTokens, cost]
+      `INSERT INTO api_usage_log (provider, model, endpoint, input_tokens, output_tokens, cost_usd, user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [provider, model, endpoint || null, inputTokens, outputTokens, cost, userId]
     );
   } catch {
     // Graceful — table may not exist until phase 2 migration is run

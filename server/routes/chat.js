@@ -208,7 +208,7 @@ router.post('/', optionalAuth, async (req, res) => {
       if (event.type === 'message_delta') outputTokens = event.usage?.output_tokens ?? 0;
     }
 
-    logUsage({ provider: 'anthropic', model: selectedModel, endpoint: 'chat', inputTokens, outputTokens }).catch(() => {});
+    logUsage({ provider: 'anthropic', model: selectedModel, endpoint: 'chat', inputTokens, outputTokens, userId: req.user?.id || null }).catch(() => {});
 
     res.write('data: [DONE]\n\n');
     res.end();
