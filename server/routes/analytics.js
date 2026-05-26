@@ -1,11 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db/database');
+const { optionalAuth } = require('../middleware/auth');
+
+// Build a WHERE clause fragment for user isolation
+function userFilter(userId) {
+  return userId
+    ? { clause: 'AND (user_id = ? OR user_id IS NULL)', params: [userId] }
+    : { clause: 'AND user_id IS NULL', params: [] };
+}
 
 // GET /api/analytics/streaks
-router.get('/streaks', async (req, res) => {
+router.get('/streaks', optionalAuth, async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM checkins ORDER BY date DESC');
+    const userId = req.user?.id || null;
+    const uf = userFilter(userId);
+    const rows = await query(
+      `SELECT * FROM checkins WHERE 1=1 ${uf.clause} ORDER BY date DESC`,
+      uf.params
+    );
 
     const streaks = {
       exercise: { current: 0, best: 0 },
@@ -16,7 +29,6 @@ router.get('/streaks', async (req, res) => {
       sleep7plus: { current: 0, best: 0 },
     };
 
-    // Calculate best streaks from all data
     for (const key of Object.keys(streaks)) {
       let current = 0;
       for (const row of rows) {
@@ -36,12 +48,10 @@ router.get('/streaks', async (req, res) => {
       }
     }
 
-    // Recalculate current streaks properly (consecutive from today)
     for (const key of Object.keys(streaks)) {
       let count = 0;
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        // Check date continuity
         if (i > 0) {
           const d1 = new Date(rows[i - 1].date);
           const d2 = new Date(row.date);
@@ -68,14 +78,18 @@ router.get('/streaks', async (req, res) => {
 });
 
 // GET /api/analytics/correlations
-router.get('/correlations', async (req, res) => {
+router.get('/correlations', optionalAuth, async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM checkins ORDER BY date ASC');
+    const userId = req.user?.id || null;
+    const uf = userFilter(userId);
+    const rows = await query(
+      `SELECT * FROM checkins WHERE 1=1 ${uf.clause} ORDER BY date ASC`,
+      uf.params
+    );
     if (rows.length < 5) {
       return res.json({ correlations: [], insufficient: true });
     }
 
-    // Cast all numeric/boolean fields coming from sql.unsafe() (which returns strings)
     const numFields = ['sleep_hours','mood_score','energy_score','focus_score','stress_score',
       'productive_hours','physical_score','mental_score','financial_score','spiritual_score',
       'overall_score','water_intake','steps'];
@@ -86,7 +100,7 @@ router.get('/correlations', async (req, res) => {
         if (out[f] != null) out[f] = parseFloat(out[f]) || 0;
       }
       for (const f of boolFields) {
-        if (out[f] != null) out[f] = out[f] === true || out[f] === 't' || out[f] === '1' || out[f] === 1 ? 1 : 0;
+        out[f] = out[f] === true || out[f] === 't' || out[f] === '1' || out[f] === 1 ? 1 : 0;
       }
       return out;
     });
@@ -114,7 +128,6 @@ router.get('/correlations', async (req, res) => {
       const bVals = parsed.map(r => r[pair.b]).filter(v => v != null);
       if (aVals.length < 5 || bVals.length < 5) continue;
 
-      // For boolean fields, compare average of B when A=true vs A=false
       const aIsBool = aVals.every(v => v === 0 || v === 1);
       if (aIsBool) {
         const withA = parsed.filter(r => r[pair.a] === 1).map(r => r[pair.b]).filter(v => v != null);
@@ -137,7 +150,6 @@ router.get('/correlations', async (req, res) => {
           });
         }
       } else {
-        // Pearson correlation for numeric pairs
         const validRows = parsed.filter(r => r[pair.a] != null && r[pair.b] != null);
         if (validRows.length < 5) continue;
         const xs = validRows.map(r => r[pair.a]);
@@ -151,7 +163,6 @@ router.get('/correlations', async (req, res) => {
           const avgBelow = below.length ? below.reduce((s, v) => s + v, 0) / below.length : 0;
           const diff = avgAbove - avgBelow;
           const pctDiff = avgBelow > 0 ? Math.round((diff / avgBelow) * 100) : 0;
-
           const direction = pair.invert ? (r < 0 ? 'positive' : 'negative') : (r > 0 ? 'positive' : 'negative');
           correlations.push({
             ...pair,
@@ -168,7 +179,6 @@ router.get('/correlations', async (req, res) => {
       }
     }
 
-    // Sort by strength
     correlations.sort((a, b) => {
       const sa = a.type === 'boolean' ? Math.abs(a.pctDiff) : Math.abs(a.correlation * 100);
       const sb = b.type === 'boolean' ? Math.abs(b.pctDiff) : Math.abs(b.correlation * 100);
@@ -199,16 +209,20 @@ function pearson(xs, ys) {
 }
 
 // GET /api/analytics/comparison?period=week|month
-router.get('/comparison', async (req, res) => {
+router.get('/comparison', optionalAuth, async (req, res) => {
   try {
+    const userId = req.user?.id || null;
     const period = req.query.period || 'week';
     const daysBack = period === 'month' ? 30 : 7;
+    const uf = userFilter(userId);
 
     const current = await query(
-      `SELECT * FROM checkins WHERE date > (CURRENT_DATE - ${daysBack})::text ORDER BY date ASC`
+      `SELECT * FROM checkins WHERE date > (CURRENT_DATE - ${daysBack})::text ${uf.clause} ORDER BY date ASC`,
+      uf.params
     );
     const previous = await query(
-      `SELECT * FROM checkins WHERE date <= (CURRENT_DATE - ${daysBack})::text AND date > (CURRENT_DATE - ${daysBack * 2})::text ORDER BY date ASC`
+      `SELECT * FROM checkins WHERE date <= (CURRENT_DATE - ${daysBack})::text AND date > (CURRENT_DATE - ${daysBack * 2})::text ${uf.clause} ORDER BY date ASC`,
+      uf.params
     );
 
     const avg = (arr, key) => {
@@ -217,32 +231,29 @@ router.get('/comparison', async (req, res) => {
     };
 
     const pillars = ['physical_score', 'mental_score', 'financial_score', 'spiritual_score', 'overall_score'];
-    const currentAvg = {};
-    const previousAvg = {};
-    const delta = {};
-
+    const currentAvg = {}, previousAvg = {}, delta = {};
     for (const p of pillars) {
       currentAvg[p] = avg(current, p);
       previousAvg[p] = avg(previous, p);
       delta[p] = currentAvg[p] != null && previousAvg[p] != null ? currentAvg[p] - previousAvg[p] : null;
     }
 
-    res.json({
-      period,
-      current: { avg: currentAvg, days: current.length },
-      previous: { avg: previousAvg, days: previous.length },
-      delta,
-    });
+    res.json({ period, current: { avg: currentAvg, days: current.length }, previous: { avg: previousAvg, days: previous.length }, delta });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // GET /api/analytics/export?format=csv|json
-router.get('/export', async (req, res) => {
+router.get('/export', optionalAuth, async (req, res) => {
   try {
+    const userId = req.user?.id || null;
     const format = req.query.format || 'csv';
-    const rows = await query('SELECT * FROM checkins ORDER BY date ASC');
+    const uf = userFilter(userId);
+    const rows = await query(
+      `SELECT * FROM checkins WHERE 1=1 ${uf.clause} ORDER BY date ASC`,
+      uf.params
+    );
 
     if (format === 'json') {
       res.setHeader('Content-Disposition', 'attachment; filename=patternos-export.json');
@@ -250,7 +261,6 @@ router.get('/export', async (req, res) => {
       return res.json(rows);
     }
 
-    // CSV
     if (rows.length === 0) return res.status(404).json({ error: 'No data to export' });
     const headers = Object.keys(rows[0]);
     const csvRows = [headers.join(',')];

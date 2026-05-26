@@ -9,6 +9,12 @@
       "memory": 512
     }
   },
+  "crons": [
+    { "path": "/api/cron/morning-brief", "schedule": "0 7 * * *" },
+    { "path": "/api/cron/notion-sync",   "schedule": "0 6 * * *" },
+    { "path": "/api/cron/digest",        "schedule": "0 8 * * 1" },
+    { "path": "/api/cron/pattern-alerts","schedule": "0 20 * * *" }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/((?!api|assets|favicon|manifest|sw|icon|apple).*)", "destination": "/index.html" }
