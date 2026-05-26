@@ -23,7 +23,7 @@ async function buildContext(currentDate, userId = null) {
     const [checkinToday, recent, goals, notionFeed, activities, gcalEvents] = await Promise.all([
       queryOne(`SELECT * FROM checkins WHERE 1=1 ${uf} ORDER BY date DESC LIMIT 1`, p),
       query(`SELECT date, physical_score, mental_score, financial_score, spiritual_score, overall_score FROM checkins WHERE 1=1 ${uf} ORDER BY date DESC LIMIT 14`, p),
-      query(`SELECT title, domain, metric, target_value, current_value, deadline FROM goals WHERE active = 1 AND completed = 0 ${uf} ORDER BY priority DESC LIMIT 10`, p),
+      query(`SELECT title, domain, metric, target_value, current_value, deadline FROM goals WHERE active = 1 AND completed = 0 ${uf} ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END LIMIT 10`, p),
       query("SELECT page_date, raw_content, parsed_fields FROM notion_cache ORDER BY page_date DESC NULLS LAST LIMIT 7"),
       query("SELECT a.name, a.domain, a.impact FROM daily_activities da JOIN activities a ON a.id = da.activity_id WHERE da.date = (SELECT MAX(date) FROM daily_activities) LIMIT 10"),
       getEventsInRange(today, today).catch(() => []),

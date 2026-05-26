@@ -227,9 +227,10 @@ router.post('/plan', optionalAuth, async (req, res) => {
   try {
     const { model: activeModel } = await getActiveModel(userId);
     const client = getClient();
+    const isMultiDay = dates.length > 1;
     const msg = await client.messages.create({
       model: activeModel,
-      max_tokens: 3000,
+      max_tokens: isMultiDay ? 8000 : 3500,
       messages: [{ role: 'user', content: prompt }],
     });
     logUsage({

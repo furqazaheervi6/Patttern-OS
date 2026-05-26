@@ -771,7 +771,7 @@ export default function CalendarPage() {
           if (!date) continue;
           if (!next[date]) next[date] = [];
           if (action === 'add') {
-            const block = { date, start: act.start, end: act.end, title: act.title, pillar: act.pillar || 'personal', description: act.description || '', priority: act.priority || 'medium' };
+            const block = { id: act.id || crypto.randomUUID(), date, start: act.start, end: act.end, title: act.title, pillar: act.pillar || 'personal', description: act.description || '', priority: act.priority || 'medium' };
             next[date] = [...next[date].filter(b => !(b.start === act.start)), block];
           } else if (action === 'remove') {
             next[date] = next[date].filter(b => b.start !== act.start);

@@ -124,7 +124,7 @@ router.get('/feed', optionalAuth, async (req, res) => {
       query(`SELECT name, status, target_date, pillar_emphasis, domain FROM initiatives
              WHERE status = 'active' ${uf} ORDER BY created_at DESC LIMIT 5`, p),
       query(`SELECT title, domain, current_value, target_value, metric FROM goals
-             WHERE active = 1 AND completed = 0 ${uf} ORDER BY priority DESC LIMIT 5`, p),
+             WHERE active = 1 AND completed = 0 ${uf} ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END LIMIT 5`, p),
       query(`SELECT pillar, start_time, end_time FROM calendar_blocks
              WHERE date = $1 AND replaced_at IS NULL${userId ? ' AND (user_id = $2 OR user_id IS NULL)' : ''}`,
              userId ? [today, userId] : [today]).catch(() => []),
