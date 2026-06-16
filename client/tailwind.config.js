@@ -30,9 +30,9 @@ export default {
       fontFamily: {
         display: ['Cinzel', 'Georgia', 'serif'],
         serif: ['Cinzel', 'Georgia', 'serif'],
-        body: ['Inter', 'system-ui', 'sans-serif'],
+        body: ['Outfit', 'system-ui', 'sans-serif'],
         mono: ['DM Mono', 'monospace'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Outfit', 'system-ui', 'sans-serif'],
       },
     },
   },

@@ -90,13 +90,18 @@ export default function DomainCheckIn({ domain, color, onSaved }) {
       <div className="space-y-4">
         {fields.map(field => {
           if (field.type === 'slider') {
+            const fillPct = ((form[field.name] - field.min) / (field.max - field.min)) * 100;
             return (
               <div key={field.name}>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-mono text-text-muted">{field.label}</label>
-                  <span className="text-xs font-mono font-semibold text-text-primary">{form[field.name]}</span>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-mono text-text-muted uppercase tracking-wider">{field.label}</label>
+                  <span className="text-sm font-mono font-bold" style={{ color: '#C9C9C9', minWidth: 32, textAlign: 'right' }}>
+                    {form[field.name]}
+                  </span>
                 </div>
-                {field.description && <p className="text-xs text-text-muted mb-1" style={{ fontSize: 10 }}>{field.description}</p>}
+                {field.description && (
+                  <p className="text-xs text-text-muted mb-2" style={{ fontSize: 10, letterSpacing: '0.05em' }}>{field.description}</p>
+                )}
                 <input
                   type="range"
                   min={field.min}
@@ -105,20 +110,39 @@ export default function DomainCheckIn({ domain, color, onSaved }) {
                   value={form[field.name]}
                   onChange={e => set(field.name, parseFloat(e.target.value))}
                   className="w-full"
+                  style={{ '--slider-fill': `${fillPct}%` }}
                 />
+                <div className="flex justify-between mt-1">
+                  <span style={{ fontSize: 9, color: '#3A3A50', fontFamily: 'DM Mono, monospace' }}>{field.min}</span>
+                  <span style={{ fontSize: 9, color: '#3A3A50', fontFamily: 'DM Mono, monospace' }}>{field.max}</span>
+                </div>
               </div>
             );
           }
           if (field.type === 'toggle') {
+            const on = form[field.name];
             return (
-              <div key={field.name} className="flex items-center justify-between">
-                <span className="text-xs font-mono text-text-muted">{field.label}</span>
+              <div key={field.name} className="flex items-center justify-between py-1">
+                <span className="text-xs font-mono text-text-muted uppercase tracking-wider">{field.label}</span>
                 <button
                   type="button"
-                  onClick={() => set(field.name, !form[field.name])}
-                  className={`w-11 h-6 rounded-full transition-colors duration-200 relative ${form[field.name] ? 'bg-physical' : 'bg-border'}`}
+                  onClick={() => set(field.name, !on)}
+                  style={{
+                    width: 44, height: 24, borderRadius: 12,
+                    background: on ? 'linear-gradient(135deg, #8B0000, #B22222)' : '#1E1E32',
+                    border: `1px solid ${on ? '#B22222' : '#2E2E48'}`,
+                    boxShadow: on ? '0 0 8px rgba(139,0,0,0.35)' : 'none',
+                    position: 'relative', transition: 'all 0.2s ease', cursor: 'pointer', flexShrink: 0,
+                  }}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${form[field.name] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <span style={{
+                    position: 'absolute', top: 3,
+                    left: on ? 23 : 3,
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: on ? '#fff' : '#4A4A68',
+                    boxShadow: on ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
+                    transition: 'all 0.2s ease',
+                  }} />
                 </button>
               </div>
             );

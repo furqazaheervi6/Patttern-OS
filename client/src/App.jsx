@@ -19,14 +19,16 @@ const Ops          = lazy(() => import('./pages/Ops.jsx'));
 const Initiatives  = lazy(() => import('./pages/Initiatives.jsx'));
 const Login        = lazy(() => import('./pages/Login.jsx'));
 const Onboarding   = lazy(() => import('./pages/Onboarding.jsx'));
-const Construction = lazy(() => import('./pages/Construction.jsx'));
+const Construction  = lazy(() => import('./pages/Construction.jsx'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const Sojourney    = lazy(() => import('./pages/Sojourney.jsx'));
 const Kaizen       = lazy(() => import('./pages/Kaizen.jsx'));
 const Harmony      = lazy(() => import('./pages/Harmony.jsx'));
 const Omnivision   = lazy(() => import('./pages/Omnivision.jsx'));
 const TwoHundred   = lazy(() => import('./pages/TwoHundred.jsx'));
 const Humanity     = lazy(() => import('./pages/Humanity.jsx'));
-const Patterns     = lazy(() => import('./pages/Patterns.jsx'));
+const Patterns            = lazy(() => import('./pages/Patterns.jsx'));
+const IntegrationConnect  = lazy(() => import('./pages/IntegrationConnect.jsx'));
 
 function AuthGate({ children }) {
   const { user, loading } = useAuth();
@@ -34,7 +36,7 @@ function AuthGate({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080E1C' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#141424' }}>
         <span style={{ color: '#8B0000', fontSize: '1.5rem' }}>◎</span>
       </div>
     );
@@ -50,16 +52,20 @@ function AuthGate({ children }) {
 function AppShell() {
   const [chatOpen, setChatOpen] = useState(true);
   const { user } = useAuth();
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/onboarding' || location.pathname === '/reset-password';
 
   return (
     <div className="flex min-h-screen relative" style={{ zIndex: 1 }}>
       <Sidebar />
-      <main className="flex-1 overflow-y-auto min-w-0 lg:pb-0 pb-[72px]">
+      <main className={`flex-1 overflow-y-auto min-w-0 ${isAuthPage ? '' : 'lg:pb-0 pb-[72px]'}`}>
         <ErrorBoundary>
           <Routes>
             {/* Public */}
-            <Route path="/login"      element={<Suspense fallback={null}><Login /></Suspense>} />
-            <Route path="/onboarding" element={<Suspense fallback={null}><Onboarding /></Suspense>} />
+            <Route path="/login"          element={<Suspense fallback={null}><Login /></Suspense>} />
+            <Route path="/onboarding"     element={<Suspense fallback={null}><Onboarding /></Suspense>} />
+            <Route path="/reset-password"      element={<Suspense fallback={null}><ResetPassword /></Suspense>} />
+            <Route path="/connect-integrations" element={<AuthGate><Suspense fallback={null}><IntegrationConnect /></Suspense></AuthGate>} />
 
             {/* Protected */}
             <Route path="/"                    element={<AuthGate><Suspense fallback={<DashboardSkeleton />}><Home /></Suspense></AuthGate>} />

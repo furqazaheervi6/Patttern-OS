@@ -68,16 +68,15 @@ const DEFAULT = {
 };
 
 function SliderRow({ label, name, value, onChange, min = 1, max = 10, description }) {
+  const fillPct = ((value - min) / (max - min)) * 100;
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
-        <label className="text-xs font-mono text-text-muted">{label}</label>
-        <span className="text-xs font-mono font-semibold text-text-primary">{value}</span>
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-xs font-mono text-text-muted uppercase tracking-wider">{label}</label>
+        <span className="text-sm font-mono font-bold" style={{ color: '#C9C9C9', minWidth: 32, textAlign: 'right' }}>{value}</span>
       </div>
       {description && (
-        <p className="text-xs text-text-muted mb-1" style={{ fontSize: '10px' }}>
-          {description}
-        </p>
+        <p className="text-xs text-text-muted mb-2" style={{ fontSize: '10px' }}>{description}</p>
       )}
       <input
         type="range"
@@ -87,38 +86,51 @@ function SliderRow({ label, name, value, onChange, min = 1, max = 10, descriptio
         value={value}
         onChange={(e) => onChange(name, parseFloat(e.target.value))}
         className="w-full"
+        style={{ '--slider-fill': `${fillPct}%` }}
       />
+      <div className="flex justify-between mt-1">
+        <span style={{ fontSize: 9, color: '#3A3A50', fontFamily: 'DM Mono, monospace' }}>{min}</span>
+        <span style={{ fontSize: 9, color: '#3A3A50', fontFamily: 'DM Mono, monospace' }}>{max}</span>
+      </div>
     </div>
   );
 }
 
 function ToggleRow({ label, name, value, onChange, description }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between py-1">
       <div>
-        <p className="text-xs font-mono text-text-muted">{label}</p>
+        <p className="text-xs font-mono text-text-muted uppercase tracking-wider">{label}</p>
         {description && (
-          <p className="text-xs text-text-muted" style={{ fontSize: '10px' }}>
-            {description}
-          </p>
+          <p className="text-xs text-text-muted" style={{ fontSize: '10px' }}>{description}</p>
         )}
       </div>
       <button
         type="button"
         onClick={() => onChange(name, !value)}
-        className={`w-11 h-6 rounded-full transition-colors duration-200 relative ${
-          value ? 'bg-physical' : 'bg-border'
-        }`}
+        style={{
+          width: 44, height: 24, borderRadius: 12,
+          background: value ? 'linear-gradient(135deg, #8B0000, #B22222)' : '#1E1E32',
+          border: `1px solid ${value ? '#B22222' : '#2E2E48'}`,
+          boxShadow: value ? '0 0 8px rgba(139,0,0,0.35)' : 'none',
+          position: 'relative', transition: 'all 0.2s ease', cursor: 'pointer', flexShrink: 0,
+        }}
       >
         <span
-          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-            value ? 'translate-x-5' : 'translate-x-0.5'
-          }`}
+          style={{
+            position: 'absolute', top: 3,
+            left: value ? 23 : 3,
+            width: 16, height: 16, borderRadius: '50%',
+            background: value ? '#fff' : '#4A4A68',
+            boxShadow: value ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
+            transition: 'all 0.2s ease',
+          }}
         />
       </button>
     </div>
   );
 }
+
 
 function Section({ pillar, title, icon, children }) {
   const color = pillarColor(pillar);

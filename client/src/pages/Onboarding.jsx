@@ -21,6 +21,7 @@ const DOMAINS = [
 export default function Onboarding() {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState(user?.mode || 'personal');
   const [goal, setGoal] = useState({ title: '', domain: 'financial', target_value: 0, target_label: '' });
@@ -113,10 +114,9 @@ export default function Onboarding() {
     setSaving(true);
     try {
       await updateUser({ onboarded: true });
-      navigate('/');
-    } catch {
-      navigate('/');
-    }
+    } catch {}
+    setSaving(false);
+    navigate('/');
   };
 
   const stepId = STEPS[step].id;

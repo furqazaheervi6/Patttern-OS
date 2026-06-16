@@ -26,9 +26,12 @@ export function AuthProvider({ children }) {
     try {
       const r = await axios.get('/api/auth/me');
       setUser(r.data);
-    } catch {
-      setToken(null);
-      setUser(null);
+    } catch (err) {
+      // Only invalidate token on explicit auth rejection; keep it on network/server errors
+      if (!err.response || err.response.status === 401 || err.response.status === 403) {
+        setToken(null);
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -80,4 +83,10 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
+}
+
+// Force a full page reload if this context module is hot-replaced,
+// preventing stale AuthContext references in components.
+if (import.meta.hot) {
+  import.meta.hot.accept(() => { window.location.reload(); });
 }

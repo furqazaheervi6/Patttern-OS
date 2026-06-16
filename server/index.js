@@ -57,6 +57,15 @@ app.get('/api/health', (req, res) => res.json({
   env: process.env.VERCEL ? 'vercel' : 'local',
 }));
 
+// Global handler — silently converts DB-unavailable errors to 503 empty responses
+app.use((err, req, res, next) => {
+  if (err?.code === 'DB_UNAVAILABLE') {
+    return res.status(503).json({ error: 'Database unavailable', data: null });
+  }
+  console.error(err.message);
+  res.status(500).json({ error: err.message });
+});
+
 // ── Local development server ─────────────────────────────
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3001;

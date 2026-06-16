@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { getPool } = require('./database');
+const { getPool, setDbAvailable } = require('./database');
 
 // Run in order — each file must be safe to re-run (IF NOT EXISTS everywhere)
 const MIGRATION_FILES = [
@@ -11,6 +11,8 @@ const MIGRATION_FILES = [
   'phase3-migration.sql',
   'phase4-migration.sql',
   'phase5-migration.sql',
+  'phase6-migration.sql',
+  'phase7-migration.sql',
 ];
 
 // Errors we can safely ignore on re-runs
@@ -55,6 +57,17 @@ async function runMigrations() {
   const sql = getPool();
   if (!sql) {
     console.warn('⚠️  No DB connection — skipping migrations');
+    return;
+  }
+
+  // Quick connectivity check — bail silently if DB is unreachable.
+  // Also pre-warms the shared availability cache so API routes don't wait.
+  try {
+    await sql`SELECT 1`;
+    setDbAvailable(true);
+  } catch {
+    setDbAvailable(false);
+    console.warn('⚠️  DB unreachable — skipping migrations');
     return;
   }
 

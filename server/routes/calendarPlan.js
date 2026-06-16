@@ -5,6 +5,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { query, execute } = require('../db/database');
 const { logUsage, getActiveModel } = require('../utils/usageTracker');
 const { optionalAuth } = require('../middleware/auth');
+const { getMemories, formatMemoriesForPrompt } = require('../services/memoryService');
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -35,7 +36,7 @@ function overlapsExisting(block, existingEvents) {
 }
 
 // Build the scheduling prompt — mode-aware (personal vs. operator)
-function buildPrompt(dates, existingEvents, goals, checkin, history, mode = 'personal', initiatives = []) {
+function buildPrompt(dates, existingEvents, goals, checkin, history, mode = 'personal', initiatives = [], memories = []) {
   const byDate = {};
   for (const e of existingEvents) {
     const dt = e.start?.dateTime || e.start?.date;
@@ -129,6 +130,7 @@ SCHEDULING RULES:
 9. Open every day with a physical OR spiritual morning ritual and close with a spiritual reflection block
 10. Distribute pillar blocks throughout the day — do NOT cluster all financial blocks together
 11. Schedule blocks BACK-TO-BACK around blocked windows — no dead time${operatorRules}
+${formatMemoriesForPrompt(memories)}
 
 Return ONLY a raw JSON array — no markdown, no explanation, no code fences:
 [
@@ -222,7 +224,8 @@ router.post('/plan', optionalAuth, async (req, res) => {
     }
   }
 
-  const prompt = buildPrompt(dates, existingEvents, goals, checkin, history, mode, initiatives);
+  const memories = await getMemories(userId);
+  const prompt = buildPrompt(dates, existingEvents, goals, checkin, history, mode, initiatives, memories);
 
   try {
     const { model: activeModel } = await getActiveModel(userId);
@@ -298,7 +301,8 @@ router.get('/blocks', optionalAuth, async (req, res) => {
     const userId = req.user?.id || null;
     const uf = userId ? 'AND (user_id = ? OR user_id IS NULL)' : 'AND user_id IS NULL';
     const blocks = await query(
-      `SELECT id, date, start_time AS start, end_time AS end, title, pillar, description, priority, intent, linked_goal_id, gcal_event_id
+      `SELECT id, date, start_time AS start, end_time AS end, title, pillar, description, priority, intent, linked_goal_id, gcal_event_id,
+              completed_at, skipped_at
        FROM calendar_blocks
        WHERE date = ? ${uf} AND replaced_at IS NULL
        ORDER BY start_time`,
@@ -308,6 +312,88 @@ router.get('/blocks', optionalAuth, async (req, res) => {
   } catch (err) {
     // Table may not exist yet
     res.json({ blocks: [], date });
+  }
+});
+
+// PATCH /api/calendar/blocks/:id/complete — mark a block as completed
+router.patch('/blocks/:id/complete', optionalAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user?.id || null;
+  const uf = userId ? 'AND (user_id = $2 OR user_id IS NULL)' : 'AND user_id IS NULL';
+  try {
+    await execute(
+      `UPDATE calendar_blocks SET completed_at = NOW(), skipped_at = NULL
+       WHERE id = $1 ${uf}`,
+      userId ? [id, userId] : [id]
+    );
+    // Async: update completion stats in user memories
+    if (userId) {
+      const { updateCompletionStats } = require('../services/memoryService');
+      updateCompletionStats(userId).catch(() => {});
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/calendar/blocks/:id/skip — mark a block as skipped
+router.patch('/blocks/:id/skip', optionalAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user?.id || null;
+  const uf = userId ? 'AND (user_id = $2 OR user_id IS NULL)' : 'AND user_id IS NULL';
+  try {
+    await execute(
+      `UPDATE calendar_blocks SET skipped_at = NOW(), completed_at = NULL
+       WHERE id = $1 ${uf}`,
+      userId ? [id, userId] : [id]
+    );
+    if (userId) {
+      const { updateCompletionStats } = require('../services/memoryService');
+      updateCompletionStats(userId).catch(() => {});
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/calendar/blocks/:id/uncomplete — clear completion/skip state
+router.patch('/blocks/:id/uncomplete', optionalAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user?.id || null;
+  const uf = userId ? 'AND (user_id = $2 OR user_id IS NULL)' : 'AND user_id IS NULL';
+  try {
+    await execute(
+      `UPDATE calendar_blocks SET completed_at = NULL, skipped_at = NULL WHERE id = $1 ${uf}`,
+      userId ? [id, userId] : [id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/calendar/blocks/stats — per-pillar completion rates for the last 30 days
+router.get('/blocks/stats', optionalAuth, async (req, res) => {
+  const userId = req.user?.id || null;
+  const uf = userId ? 'AND (user_id = $1 OR user_id IS NULL)' : 'AND user_id IS NULL';
+  const p = userId ? [userId] : [];
+  try {
+    const rows = await query(
+      `SELECT pillar,
+              COUNT(*) AS total,
+              COUNT(completed_at) AS completed,
+              COUNT(skipped_at) AS skipped,
+              ROUND(COUNT(completed_at)::numeric / NULLIF(COUNT(*),0) * 100) AS rate
+       FROM calendar_blocks
+       WHERE date >= (CURRENT_DATE - 30)::text AND replaced_at IS NULL ${uf}
+       GROUP BY pillar`,
+      p
+    );
+    res.json({ stats: rows });
+  } catch (err) {
+    res.json({ stats: [] });
   }
 });
 

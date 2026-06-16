@@ -7,9 +7,22 @@ const connectionString =
 
 const isServerless = !!process.env.VERCEL;
 
-// Lazy pool — created on first use, not at module load.
-// This prevents cold-start timeouts when the DB is slow or unreachable.
 let _sql = null;
+
+// Cache DB availability for 30 s to avoid hammering an unreachable host
+let _dbAvailable = null;
+let _dbCheckAt   = 0;
+const DB_CACHE_MS = 30_000;
+
+function isNetworkError(err) {
+  const msg = err?.message || '';
+  return (
+    msg.includes('ENOTFOUND') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('connect_timeout') ||
+    msg.includes('timed out')
+  );
+}
 
 function getPool() {
   if (_sql) return _sql;
@@ -26,7 +39,7 @@ function getPool() {
     _sql = postgres(connectionString, {
       max: isServerless ? 3 : 10,
       idle_timeout: isServerless ? 10 : 30,
-      connect_timeout: isServerless ? 8 : 15,
+      connect_timeout: isServerless ? 8 : 2,
       max_lifetime: isServerless ? 60 : 1800,
       ssl: isSupabase ? { rejectUnauthorized: false } : false,
       onnotice: () => {},
@@ -37,6 +50,28 @@ function getPool() {
     return null;
   }
   return _sql;
+}
+
+// Returns true if DB is reachable; caches the result for DB_CACHE_MS
+async function checkDbAvailable() {
+  const now = Date.now();
+  if (_dbAvailable !== null && now - _dbCheckAt < DB_CACHE_MS) return _dbAvailable;
+
+  const sql = getPool();
+  if (!sql) {
+    _dbAvailable = false;
+    _dbCheckAt = now;
+    return false;
+  }
+
+  try {
+    await sql`SELECT 1`;
+    _dbAvailable = true;
+  } catch {
+    _dbAvailable = false;
+  }
+  _dbCheckAt = now;
+  return _dbAvailable;
 }
 
 function convertPlaceholders(text) {
@@ -54,27 +89,47 @@ function withTimeout(promise, ms = 8000) {
 }
 
 async function query(text, params = []) {
+  if (!await checkDbAvailable()) return [];
   const sql = getPool();
-  if (!sql) throw new Error('Database not available');
   const converted = convertPlaceholders(text);
-  const rows = await withTimeout(sql.unsafe(converted, params));
-  return Array.from(rows);
+  try {
+    const rows = await withTimeout(sql.unsafe(converted, params));
+    return Array.from(rows);
+  } catch (err) {
+    if (isNetworkError(err)) { _dbAvailable = false; _dbCheckAt = Date.now(); return []; }
+    throw err;
+  }
 }
 
 async function queryOne(text, params = []) {
+  if (!await checkDbAvailable()) return null;
   const sql = getPool();
-  if (!sql) throw new Error('Database not available');
   const converted = convertPlaceholders(text);
-  const rows = await withTimeout(sql.unsafe(converted, params));
-  return rows.length > 0 ? rows[0] : null;
+  try {
+    const rows = await withTimeout(sql.unsafe(converted, params));
+    return rows.length > 0 ? rows[0] : null;
+  } catch (err) {
+    if (isNetworkError(err)) { _dbAvailable = false; _dbCheckAt = Date.now(); return null; }
+    throw err;
+  }
 }
 
 async function execute(text, params = []) {
+  if (!await checkDbAvailable()) return [];
   const sql = getPool();
-  if (!sql) throw new Error('Database not available');
   const converted = convertPlaceholders(text);
-  const result = await withTimeout(sql.unsafe(converted, params));
-  return result;
+  try {
+    const result = await withTimeout(sql.unsafe(converted, params));
+    return result;
+  } catch (err) {
+    if (isNetworkError(err)) { _dbAvailable = false; _dbCheckAt = Date.now(); return []; }
+    throw err;
+  }
 }
 
-module.exports = { query, queryOne, execute, getPool };
+function setDbAvailable(val) {
+  _dbAvailable = val;
+  _dbCheckAt = Date.now();
+}
+
+module.exports = { query, queryOne, execute, getPool, checkDbAvailable, setDbAvailable };

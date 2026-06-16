@@ -791,6 +791,13 @@ export default function CalendarPage() {
     return () => window.removeEventListener('patternos:planactions', handler);
   }, []);
 
+  // Refresh check-in context when check-in is saved from any page
+  useEffect(() => {
+    const onCheckin = () => fetchData(true);
+    window.addEventListener('patternos:checkin_saved', onCheckin);
+    return () => window.removeEventListener('patternos:checkin_saved', onCheckin);
+  }, [fetchData]);
+
   const generatePlan = useCallback(async (dates, { replan = false } = {}) => {
     setPlanning(true); setPlanError(null); setPlanMenuOpen(false); setGoalSetup(null);
     try {
@@ -928,7 +935,7 @@ export default function CalendarPage() {
 
         {view !== 'day' && (
           <div style={{ marginRight: 'auto' }}>
-            <h1 style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '0.9rem', fontWeight: 700, color: '#C9C9C9', letterSpacing: '0.12em', textTransform: 'uppercase', lineHeight: 1 }}>Calendar</h1>
+            <h1 style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '1.4rem', fontWeight: 700, color: '#C9C9C9', letterSpacing: '0.15em', textTransform: 'uppercase', lineHeight: 1 }}>Calendar</h1>
             {lastSync && <p style={{ fontSize: '0.5rem', color: '#3A3A55', fontFamily: 'DM Mono, monospace', marginTop: '1px' }}>synced {format(lastSync, 'h:mm a')} · auto 30s</p>}
           </div>
         )}

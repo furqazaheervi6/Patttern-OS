@@ -94,7 +94,7 @@ export default function History() {
           <h1 style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '1.4rem', fontWeight: 700, color: '#C9C9C9', letterSpacing: '0.15em', textTransform: 'uppercase', lineHeight: 1.1, marginBottom: '6px' }}>
             History
           </h1>
-          <p style={{ fontSize: '0.65rem', color: '#3A3A50', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
+          <p style={{ fontSize: '0.7rem', color: '#3A3A50', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
             Pillar scores & trends
           </p>
         </div>
@@ -152,7 +152,7 @@ export default function History() {
             className="rounded-xl p-4 text-center"
             style={{ background: 'rgba(20,20,36,0.7)', border: '1px solid #252540' }}
           >
-            <p style={{ fontSize: '0.62rem', color: '#3A3A50', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '6px' }}>
+            <p style={{ fontSize: '0.7rem', color: '#3A3A50', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '6px' }}>
               {pillarName(p)} avg
             </p>
             <p style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '1.8rem', fontWeight: 700, color: scoreColor(averages[p]), letterSpacing: '-0.02em', lineHeight: 1 }}>
@@ -168,7 +168,7 @@ export default function History() {
         style={{ background: 'rgba(20,20,36,0.7)', border: '1px solid #252540' }}
       >
         <div className="flex items-center justify-between mb-4">
-          <p style={{ fontSize: '0.65rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
+          <p style={{ fontSize: '0.7rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
             Pillar Scores — {days} Days
           </p>
         </div>
@@ -233,7 +233,7 @@ export default function History() {
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p style={{ fontSize: '0.65rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '2px' }}>
+              <p style={{ fontSize: '0.7rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '2px' }}>
                 Execution Domains
               </p>
               <p style={{ fontSize: '0.7rem', color: '#5A5A72' }}>Time allocation — last 7 days</p>
@@ -269,7 +269,7 @@ export default function History() {
           style={{ background: 'rgba(20,20,36,0.7)', border: '1px solid #252540' }}
         >
           <div className="px-4 pt-4 pb-2">
-            <p style={{ fontSize: '0.65rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
+            <p style={{ fontSize: '0.7rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
               Log
             </p>
           </div>

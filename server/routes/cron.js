@@ -161,4 +161,47 @@ router.get('/pattern-alerts', verifyCronSecret, async (req, res) => {
   }
 });
 
+// GET /api/cron/memory-extraction — weekly memory extraction for all users
+router.get('/memory-extraction', verifyCronSecret, async (req, res) => {
+  try {
+    const { query } = require('../db/database');
+    const { extractMemories, updateCompletionStats } = require('../services/memoryService');
+    const users = await query(
+      `SELECT DISTINCT user_id FROM checkins WHERE user_id IS NOT NULL GROUP BY user_id HAVING COUNT(*) >= 5`
+    );
+    for (const { user_id } of users) {
+      await extractMemories(user_id);
+      await updateCompletionStats(user_id);
+    }
+    res.json({ success: true, users_processed: users.length });
+  } catch (err) {
+    console.error('Cron: Memory extraction failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/cron/pattern-analysis — weekly pattern analysis for all users
+router.get('/pattern-analysis', verifyCronSecret, async (req, res) => {
+  try {
+    const { analyzeAllUsers } = require('../services/patternAnalyzer');
+    await analyzeAllUsers();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Cron: Pattern analysis failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/cron/research-agent — daily research for active initiatives
+router.get('/research-agent', verifyCronSecret, async (req, res) => {
+  try {
+    const { researchAllUsers } = require('../services/researchAgent');
+    await researchAllUsers();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Cron: Research agent failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

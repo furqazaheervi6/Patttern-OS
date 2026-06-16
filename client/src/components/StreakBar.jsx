@@ -47,12 +47,18 @@ export default function StreakBar({ filter }) {
   const [streaks, setStreaks] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchStreaks = React.useCallback(() => {
     axios.get('/api/analytics/streaks')
       .then(r => setStreaks(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchStreaks();
+    window.addEventListener('patternos:checkin_saved', fetchStreaks);
+    return () => window.removeEventListener('patternos:checkin_saved', fetchStreaks);
+  }, [fetchStreaks]);
 
   if (loading || !streaks) return null;
 
@@ -67,7 +73,7 @@ export default function StreakBar({ filter }) {
       className="rounded-xl p-4 fade-in"
       style={{ background: 'rgba(20,20,36,0.6)', border: '1px solid #252540' }}
     >
-      <p style={{ fontSize: '0.62rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '12px' }}>
+      <p style={{ fontSize: '0.7rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '12px' }}>
         Active Streaks
       </p>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">

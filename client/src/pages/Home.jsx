@@ -14,6 +14,7 @@ import CalendarWidget from '../components/CalendarWidget.jsx';
 import CheckIn from '../components/CheckIn.jsx';
 import ActivityImpact from '../components/ActivityImpact.jsx';
 import IntelligenceFeed from '../components/IntelligenceFeed.jsx';
+import DailyMission from '../components/DailyMission.jsx';
 import TodayPlanWidget from '../components/TodayPlanWidget.jsx';
 import OperatorOpsPanel from '../components/OperatorOpsPanel.jsx';
 import GoalsWidget from '../components/GoalsWidget.jsx';
@@ -158,10 +159,13 @@ export default function Home() {
         {/* Left column — intelligence + plan */}
         <div className="lg:col-span-1 space-y-3">
 
+          {/* Daily Mission */}
+          <DailyMission />
+
           {/* AI Intelligence Feed */}
           <div style={{ background: 'rgba(20,20,36,0.6)', border: '1px solid #252540', borderRadius: '12px', padding: '16px' }}>
             <div className="flex items-center justify-between mb-3">
-              <p style={{ fontSize: '0.62rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
+              <p style={{ fontSize: '0.7rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
                 AI Intelligence
               </p>
               <span style={{ fontSize: '0.6rem', color: '#8B0000', fontFamily: 'DM Mono, monospace' }}>live</span>
@@ -184,7 +188,7 @@ export default function Home() {
 
           {/* Overall Score */}
           {todayScores?.overall != null && (
-            <div className="fade-in" style={{ padding: '12px 16px', borderRadius: '12px', background: 'rgba(28,28,46,0.9)', border: '1px solid #2E2E48', display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div className="fade-in" style={{ padding: '12px 16px', borderRadius: '12px', background: 'rgba(20,20,36,0.7)', border: '1px solid #252540', display: 'flex', alignItems: 'center', gap: '20px' }}>
               <div style={{ minWidth: '80px' }}>
                 <p style={{ fontSize: '0.6rem', color: '#3A3A50', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: '2px' }}>Overall</p>
                 <p style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '2rem', fontWeight: 700, color: overallColor, letterSpacing: '-0.02em', lineHeight: 1 }}>

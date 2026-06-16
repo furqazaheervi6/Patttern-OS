@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 @tailwind base;
 @tailwind components;
@@ -10,9 +15,9 @@
   }
 
   body {
-    background-color: #141428;
+    background-color: #141424;
     color: #C9C9C9;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
     margin: 0;
     padding: 0;
     /* iOS safe area insets */
@@ -61,7 +66,7 @@
   }
 
   h4, h5, h6 {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
     letter-spacing: 0.02em;
     color: #C9C9C9;
   }
@@ -83,9 +88,9 @@
 
 @layer components {
   .card {
-    background: rgba(28, 28, 46, 0.92);
-    border: 1px solid #2E2E48;
-    border-radius: 10px;
+    background: rgba(20, 20, 36, 0.7);
+    border: 1px solid #252540;
+    border-radius: 12px;
     padding: 16px;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
     backdrop-filter: blur(8px);
@@ -98,7 +103,7 @@
 
   .card-ghost {
     background: transparent;
-    border: 1px solid #2A2A42;
+    border: 1px solid #252540;
     border-radius: 12px;
     padding: 20px;
     transition: border-color 0.3s ease;
@@ -220,26 +225,53 @@
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
-  height: 3px;
-  border-radius: 2px;
-  background: #1A1A2A;
+  height: 5px;
+  border-radius: 4px;
+  background: linear-gradient(
+    to right,
+    #8B0000 0%,
+    #B22222 var(--slider-fill, 50%),
+    #1E1E32 var(--slider-fill, 50%),
+    #1E1E32 100%
+  );
   outline: none;
   cursor: pointer;
+  transition: background 0.05s;
 }
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #8B0000;
+  background: #C9C9C9;
   cursor: pointer;
-  border: 2px solid #06060C;
+  border: 2px solid #8B0000;
+  box-shadow: 0 0 0 3px rgba(139,0,0,0.15), 0 2px 6px rgba(0,0,0,0.5);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 input[type='range']::-webkit-slider-thumb:hover {
-  transform: scale(1.25);
-  box-shadow: 0 0 8px rgba(139, 0, 0, 0.5);
+  transform: scale(1.15);
+  box-shadow: 0 0 0 5px rgba(139,0,0,0.2), 0 0 12px rgba(139,0,0,0.4);
+}
+input[type='range']::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #C9C9C9;
+  cursor: pointer;
+  border: 2px solid #8B0000;
+  box-shadow: 0 0 0 3px rgba(139,0,0,0.15);
+}
+input[type='range']::-moz-range-track {
+  height: 5px;
+  border-radius: 4px;
+  background: #1E1E32;
+}
+input[type='range']::-moz-range-progress {
+  height: 5px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #8B0000, #B22222);
 }
 
 /* Select & date inputs */

@@ -5,6 +5,7 @@ const { query, queryOne } = require('../db/database');
 const { getEventsInRange } = require('../services/googleService');
 const { logUsage } = require('../utils/usageTracker');
 const { optionalAuth } = require('../middleware/auth');
+const { getMemories, formatMemoriesForPrompt } = require('../services/memoryService');
 
 const ALLOWED_MODELS = {
   haiku: 'claude-haiku-4-5-20251001',
@@ -45,14 +46,15 @@ async function buildContext(currentDate, userId = null) {
       };
     });
 
-    return { today: checkinToday, recent, goals, notionEntries, activities, gcalEvents, todayDate: today };
+    const memories = await getMemories(userId);
+    return { today: checkinToday, recent, goals, notionEntries, activities, gcalEvents, todayDate: today, memories };
   } catch {
-    return { today: null, recent: [], goals: [], notionEntries: [], activities: [], gcalEvents: [], todayDate: today };
+    return { today: null, recent: [], goals: [], notionEntries: [], activities: [], gcalEvents: [], todayDate: today, memories: [] };
   }
 }
 
 function buildSystemPrompt(ctx, calendarPlan = null, currentDate = null) {
-  const { today, recent, goals, notionEntries, activities, gcalEvents, todayDate } = ctx;
+  const { today, recent, goals, notionEntries, activities, gcalEvents, todayDate, memories } = ctx;
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -152,7 +154,7 @@ ${trendBlock}
 GOALS:
 ${goalsBlock}
 NOTION: ${notionBlock}
-ACTIVITIES: ${activityBlock}${planBlock}
+ACTIVITIES: ${activityBlock}${planBlock}${formatMemoriesForPrompt(memories)}
 ━━━━━━━━━━━━━━━`;
 }
 

@@ -46,7 +46,10 @@ export default function Sidebar() {
 
   const [integrations, setIntegrations] = useState({});
 
+  const isAuthPage = !user || location.pathname === '/login' || location.pathname === '/onboarding';
+
   useEffect(() => {
+    if (isAuthPage) return;
     const fetchStatus = async () => {
       try {
         const [ns, gs, ds, integ] = await Promise.all([
@@ -64,7 +67,12 @@ export default function Sidebar() {
       } catch {}
     };
     fetchStatus();
-  }, []);
+  }, [isAuthPage]);
+
+  // Hide on auth pages
+  if (isAuthPage) {
+    return null;
+  }
 
   const sidebarContent = (
     <>
@@ -124,9 +132,9 @@ export default function Sidebar() {
               background: isActive ? 'rgba(139,0,0,0.12)' : 'transparent',
               borderLeft: isActive ? '2px solid #8B0000' : '2px solid transparent',
               letterSpacing: '0.06em',
-              fontSize: '0.75rem',
+              fontSize: '0.7rem',
               textTransform: 'uppercase',
-              fontFamily: 'Inter, system-ui, sans-serif',
+              fontFamily: 'DM Mono, monospace',
             })}
           >
             <span style={{ fontSize: '0.9rem', width: '18px', textAlign: 'center', opacity: 0.8 }}>
@@ -143,10 +151,10 @@ export default function Sidebar() {
             className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-all duration-200"
             style={{
               color: isEvoActive ? '#C9C9C9' : '#5A5A72',
-              fontSize: '0.75rem',
+              fontSize: '0.7rem',
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
-              fontFamily: 'Inter, system-ui, sans-serif',
+              fontFamily: 'DM Mono, monospace',
             }}
           >
             <div className="flex items-center gap-3">
@@ -180,7 +188,7 @@ export default function Sidebar() {
                     fontSize: '0.7rem',
                     letterSpacing: '0.05em',
                     textTransform: 'uppercase',
-                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontFamily: 'DM Mono, monospace',
                     transition: 'all 0.15s ease',
                     color: isActive ? '#C9C9C9' : '#4A4A62',
                     background: isActive ? 'rgba(139,0,0,0.1)' : 'transparent',

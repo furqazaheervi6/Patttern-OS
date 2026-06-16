@@ -172,7 +172,7 @@ router.get('/history', optionalAuth, async (req, res) => {
     const days = parseInt(req.query.days) || 30;
     const uf = userId ? 'AND user_id = ?' : 'AND user_id IS NULL';
     const rows = await query(
-      `SELECT * FROM checkins WHERE date >= (CURRENT_DATE - $1::int)::text ${uf} ORDER BY date DESC`,
+      `SELECT * FROM checkins WHERE date >= (CURRENT_DATE - ?::int)::text ${uf} ORDER BY date DESC`,
       userId ? [days, userId] : [days]
     );
     res.json(rows);

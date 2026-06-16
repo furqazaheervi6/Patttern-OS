@@ -812,11 +812,14 @@ function GoalsTab() {
 
   useEffect(() => { fetchGoals(); }, [fetchGoals]);
 
+  const broadcastGoalsUpdate = () => window.dispatchEvent(new CustomEvent('patternos:goals_updated'));
+
   const deleteGoal = async (id) => {
     try {
       await axios.delete(`/api/goals/${id}`);
       toast.success('Goal removed');
       fetchGoals();
+      broadcastGoalsUpdate();
     } catch {
       toast.error('Failed to remove goal');
     }
@@ -827,6 +830,7 @@ function GoalsTab() {
       await axios.post(`/api/goals/${id}/complete`);
       toast.success('Goal completed!');
       fetchGoals();
+      broadcastGoalsUpdate();
     } catch {
       toast.error('Failed to complete goal');
     }
@@ -836,6 +840,7 @@ function GoalsTab() {
     try {
       await axios.post(`/api/goals/${id}/progress`, { value });
       fetchGoals();
+      broadcastGoalsUpdate();
     } catch {
       toast.error('Failed to update progress');
     }
@@ -980,6 +985,7 @@ function AddGoalModal({ onClose, onSaved }) {
     try {
       await axios.post('/api/goals', { ...form, metric: form.metric || form.title });
       toast.success('Goal added!');
+      window.dispatchEvent(new CustomEvent('patternos:goals_updated'));
       onSaved();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed');
