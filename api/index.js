@@ -1,8 +1,9 @@
 /**
  * Vercel Serverless Entry Point
- * Wraps the Express app with serverless-http for Vercel Functions.
+ * Exports the Express app directly — Vercel's Node.js runtime handles it natively.
  */
-const serverless = require('serverless-http');
+console.log('[API] Loading server...');
 const app = require('../server/index');
+console.log('[API] Server loaded, exporting handler');
 
-module.exports = serverless(app);
+module.exports = app;
