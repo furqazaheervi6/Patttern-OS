@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const { query, queryOne, execute } = require('../db/database');
+const { query, queryOne, execute, checkDbAvailable } = require('../db/database');
 const { signToken, requireAuth } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../services/emailService');
 
@@ -17,6 +17,10 @@ router.post('/signup', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
     if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid email address' });
+
+    if (!await checkDbAvailable()) {
+      return res.status(503).json({ error: 'Service temporarily unavailable — please try again in a moment' });
+    }
 
     const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email.toLowerCase().trim()]);
     if (existing) return res.status(409).json({ error: 'Email already registered' });
@@ -42,6 +46,10 @@ router.post('/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
     const normalEmail = email.toLowerCase().trim();
+    if (!await checkDbAvailable()) {
+      return res.status(503).json({ error: 'Service temporarily unavailable — please try again in a moment' });
+    }
+
     const user = await queryOne('SELECT * FROM users WHERE email = ?', [normalEmail]);
 
     // Dev bypass: accept any password for the dev email; auto-create account if needed

@@ -65,7 +65,7 @@ async function checkDbAvailable() {
   }
 
   try {
-    await sql`SELECT 1`;
+    await withTimeout(sql`SELECT 1`, 7000);
     _dbAvailable = true;
   } catch {
     _dbAvailable = false;
