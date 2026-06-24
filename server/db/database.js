@@ -9,10 +9,14 @@ const isServerless = !!process.env.VERCEL;
 
 let _sql = null;
 
-// Cache DB availability for 30 s to avoid hammering an unreachable host
+// Cache a *healthy* check for 30 s (don't re-probe a working DB on every
+// request), but only briefly cache an *unhealthy* result so a transient blip
+// — e.g. a recycled/dropped pooler connection — self-heals on the next request
+// instead of surfacing a full 30 s of "Service temporarily unavailable".
 let _dbAvailable = null;
 let _dbCheckAt   = 0;
-const DB_CACHE_MS = 30_000;
+const DB_OK_CACHE_MS   = 30_000;
+const DB_FAIL_CACHE_MS = 3_000;
 
 function isNetworkError(err) {
   const msg = err?.message || '';
@@ -52,10 +56,13 @@ function getPool() {
   return _sql;
 }
 
-// Returns true if DB is reachable; caches the result for DB_CACHE_MS
+// Returns true if DB is reachable. Healthy results are cached for 30 s; an
+// unhealthy result is rechecked within DB_FAIL_CACHE_MS, and the probe itself
+// retries a few times so one transient failure can't lock everyone out.
 async function checkDbAvailable() {
   const now = Date.now();
-  if (_dbAvailable !== null && now - _dbCheckAt < DB_CACHE_MS) return _dbAvailable;
+  const cacheWindow = _dbAvailable ? DB_OK_CACHE_MS : DB_FAIL_CACHE_MS;
+  if (_dbAvailable !== null && now - _dbCheckAt < cacheWindow) return _dbAvailable;
 
   const sql = getPool();
   if (!sql) {
@@ -64,14 +71,21 @@ async function checkDbAvailable() {
     return false;
   }
 
-  try {
-    await withTimeout(sql`SELECT 1`, 7000);
-    _dbAvailable = true;
-  } catch {
-    _dbAvailable = false;
+  // Retry before condemning the DB — a single failed probe (transient network
+  // blip / recycled connection) shouldn't surface as an outage to every caller.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await withTimeout(sql`SELECT 1`, 2500);
+      _dbAvailable = true;
+      _dbCheckAt = Date.now();
+      return true;
+    } catch {
+      if (attempt < 3) await new Promise(r => setTimeout(r, 200 * attempt));
+    }
   }
-  _dbCheckAt = now;
-  return _dbAvailable;
+  _dbAvailable = false;
+  _dbCheckAt = Date.now();
+  return false;
 }
 
 function convertPlaceholders(text) {

@@ -69,21 +69,22 @@ app.use((err, req, res, next) => {
 // ── Local development server ─────────────────────────────
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3001;
+
+  // Start listening immediately so a slow or stuck migration can't keep the
+  // API down. Migrations run in the background and no longer gate startup.
+  app.listen(PORT, () => {
+    console.log(`\n  PatternOS server running at http://localhost:${PORT}`);
+    console.log(`  API health: http://localhost:${PORT}/api/health\n`);
+  });
+
+  // Background migrations — failures/hangs are isolated from server startup.
   const { runMigrations } = require('./db/runMigrations');
-  runMigrations().then(() => {
-    app.listen(PORT, () => {
-      console.log(`\n  PatternOS server running at http://localhost:${PORT}`);
-      console.log(`  API health: http://localhost:${PORT}/api/health\n`);
+  runMigrations()
+    .then(() => {
       const { startCronJobs } = require('./services/cronJobs');
       startCronJobs();
-    });
-  }).catch(err => {
-    console.error('Migration error:', err.message);
-    // Start anyway — migration errors shouldn't block the server
-    app.listen(PORT, () => {
-      console.log(`\n  PatternOS server running at http://localhost:${PORT}\n`);
-    });
-  });
+    })
+    .catch(err => console.error('Migration error:', err.message));
 }
 
 module.exports = app;

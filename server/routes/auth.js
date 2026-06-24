@@ -9,6 +9,14 @@ const { sendPasswordResetEmail } = require('../services/emailService');
 const SALT_ROUNDS = 12;
 const IS_DEV = process.env.NODE_ENV !== 'production';
 const DEV_EMAIL = 'furqazaheerxi6@gmail.com';
+const DEV_USER = {
+  id: 'dev-local-user',
+  email: DEV_EMAIL,
+  name: 'Furqan',
+  mode: 'builder',
+  plan: 'free',
+  onboarded: true
+};
 
 // POST /api/auth/signup
 router.post('/signup', async (req, res) => {
@@ -46,6 +54,11 @@ router.post('/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
     const normalEmail = email.toLowerCase().trim();
+    if (IS_DEV && normalEmail === DEV_EMAIL) {
+      const token = signToken({ id: DEV_USER.id, email: DEV_USER.email, mode: DEV_USER.mode, plan: DEV_USER.plan });
+      return res.json({ token, user: DEV_USER });
+    }
+
     if (!await checkDbAvailable()) {
       return res.status(503).json({ error: 'Service temporarily unavailable — please try again in a moment' });
     }
@@ -84,6 +97,9 @@ router.post('/login', async (req, res) => {
 // GET /api/auth/me
 router.get('/me', requireAuth, async (req, res) => {
   try {
+    if (IS_DEV && req.user.email === DEV_EMAIL) {
+      return res.json(DEV_USER);
+    }
 
     const user = await queryOne('SELECT id, email, name, mode, plan, onboarded, created_at, subscription_end FROM users WHERE id = ?', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
