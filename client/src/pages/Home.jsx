@@ -121,7 +121,7 @@ export default function Home() {
   const isFirstUse = history.length === 0;
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
+    <div className="page-container dashboard-page">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between mb-5 fade-in">
@@ -154,16 +154,16 @@ export default function Home() {
       {isFirstUse && <EmptyStateBanner user={user} />}
 
       {/* ── Main two-column layout ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+      <div className="dashboard-main-grid mb-4">
 
         {/* Left column — intelligence + plan */}
-        <div className="lg:col-span-1 space-y-3">
+        <div className="dashboard-rail">
 
           {/* Daily Mission */}
           <DailyMission />
 
           {/* AI Intelligence Feed */}
-          <div style={{ background: 'rgba(20,20,36,0.6)', border: '1px solid #252540', borderRadius: '12px', padding: '16px' }}>
+          <div className="dashboard-panel">
             <div className="flex items-center justify-between mb-3">
               <p style={{ fontSize: '0.7rem', color: '#4A4A68', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' }}>
                 AI Intelligence
@@ -184,7 +184,7 @@ export default function Home() {
         </div>
 
         {/* Right column — scores, charts */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="dashboard-content space-y-3">
 
           {/* Overall Score */}
           {todayScores?.overall != null && (
@@ -205,7 +205,7 @@ export default function Home() {
           )}
 
           {/* Pillar Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="pillar-card-grid">
             {PILLARS.map((pillar, i) => (
               <PillarCard
                 key={pillar}
@@ -220,13 +220,9 @@ export default function Home() {
           </div>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="lg:col-span-2">
-              <TrendChart data={history} />
-            </div>
-            <div>
-              <BalanceRing thisWeek={thisWeek} lastWeek={lastWeek} />
-            </div>
+          <div className="dashboard-chart-grid">
+            <TrendChart data={history} />
+            <BalanceRing thisWeek={thisWeek} lastWeek={lastWeek} />
           </div>
 
         </div>

@@ -26,14 +26,15 @@ export default function BalanceRing({ thisWeek, lastWeek }) {
 
   if (noData) {
     return (
-      <div className="card h-64 flex items-center justify-center">
-        <p className="text-text-muted text-sm font-mono">No check-in data yet</p>
+      <div className="card chart-card min-h-[292px] h-full flex flex-col items-center justify-center text-center px-6">
+        <p className="font-display font-semibold text-sm text-text-primary mb-2">Balance Ring</p>
+        <p className="text-text-muted text-xs font-mono leading-relaxed">No check-in data yet. Your weekly pillar balance will appear here.</p>
       </div>
     );
   }
 
   return (
-    <div className="card">
+    <div className="card chart-card h-full">
       <h3 className="font-display font-semibold text-sm text-text-primary mb-4">
         Balance Ring
       </h3>

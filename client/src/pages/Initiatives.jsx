@@ -322,7 +322,7 @@ export default function Initiatives() {
   const isOperator = user?.mode === 'operator';
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+    <div className="page-container">
       <div className="pl-10 lg:pl-0 mb-6 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2.5">

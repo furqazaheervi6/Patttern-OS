@@ -265,7 +265,7 @@ export default function Patterns() {
   }
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
+    <div className="page-container">
       <div className="flex items-start justify-between mb-6 fade-in">
         <div>
           <h1 style={{ fontFamily: 'Cinzel, Georgia, serif', fontSize: '1.4rem', fontWeight: 700, color: '#C9C9C9', letterSpacing: '0.15em', textTransform: 'uppercase', lineHeight: 1.1, marginBottom: '6px' }}>

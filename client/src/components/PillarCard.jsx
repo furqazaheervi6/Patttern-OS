@@ -121,6 +121,10 @@ export default function PillarCard({ pillar, score, prevScore, history = [], ind
           : 'inset 0 1px 0 rgba(255,255,255,0.02)',
         position: 'relative',
         overflow: 'hidden',
+        minHeight: '192px',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(12px)',
       }}
@@ -205,7 +209,7 @@ export default function PillarCard({ pillar, score, prevScore, history = [], ind
       )}
 
       {/* Progress bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 'auto' }}>
         <div style={{ flex: 1, height: '2px', borderRadius: '2px', background: '#2A2A42', overflow: 'hidden' }}>
           {!showClock && <AnimatedBar width={Math.min(scoreVal, 100)} color={color} />}
         </div>

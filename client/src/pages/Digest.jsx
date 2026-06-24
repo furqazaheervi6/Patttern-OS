@@ -103,7 +103,7 @@ export default function Digest() {
   };
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
+    <div className="page-container">
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-display font-bold text-xl text-text-primary">Weekly Digests</h1>
         <button onClick={handleGenerate} disabled={generating} className="btn-primary">

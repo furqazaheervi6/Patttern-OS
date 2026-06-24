@@ -43,8 +43,8 @@ export default function TrendChart({ data = [] }) {
 
   if (!data.length) {
     return (
-      <div className="card h-64 flex items-center justify-center">
-        <p className="text-text-muted text-sm font-mono">No data yet — complete a check-in first</p>
+      <div className="card chart-card h-64 flex items-center justify-center text-center px-6">
+        <p className="text-text-muted text-sm font-mono leading-relaxed">No trend data yet. Complete a check-in to start the 30-day view.</p>
       </div>
     );
   }
@@ -52,10 +52,10 @@ export default function TrendChart({ data = [] }) {
   const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display font-semibold text-sm text-text-primary">30-Day Trend</h3>
-        <div className="flex gap-2">
+    <div className="card chart-card">
+      <div className="chart-header">
+        <h3 className="font-display font-semibold text-sm text-text-primary whitespace-nowrap">30-Day Trend</h3>
+        <div className="chart-toggles">
           {PILLARS.map((p) => (
             <button
               key={p.key}
@@ -66,6 +66,8 @@ export default function TrendChart({ data = [] }) {
                 border: `1px solid ${p.color}40`,
                 opacity: active[p.key] ? 1 : 0.3,
                 background: active[p.key] ? `${p.color}10` : 'transparent',
+                minHeight: '22px',
+                lineHeight: 1.2,
               }}
             >
               {p.label}
@@ -75,7 +77,7 @@ export default function TrendChart({ data = [] }) {
       </div>
 
       <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={sorted} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+        <LineChart data={sorted} margin={{ top: 5, right: 22, bottom: 12, left: -8 }}>
           <CartesianGrid stroke="#1E1E2E" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="date"

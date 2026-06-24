@@ -186,7 +186,7 @@ export default function Ops() {
     : 1;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+    <div className="page-container">
       <div className="pl-10 lg:pl-0 mb-6 flex items-start justify-between">
         <div>
           <h1 className="font-display font-bold text-xl text-text-primary tracking-tight">Ops Dashboard</h1>

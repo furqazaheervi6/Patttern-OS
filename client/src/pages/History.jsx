@@ -86,7 +86,7 @@ export default function History() {
   const pillarDist = opsMetrics?.pillar_distribution || {};
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
+    <div className="page-container">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-5 fade-in">

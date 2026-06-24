@@ -114,7 +114,7 @@ export default function EvolutionLayout({
   const currentMetrics = metrics ? metrics(today, history) : [];
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto fade-in">
+    <div className="page-container fade-in">
       {/* Hero */}
       <div className="mb-6 sm:mb-8 pl-10 lg:pl-0">
         <div className="flex items-center gap-3 mb-2">

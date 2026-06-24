@@ -178,7 +178,7 @@ export default function Settings() {
   const [tab, setTab] = useState('integrations');
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+    <div className="page-container settings-page">
       <div className="pl-10 lg:pl-0 mb-5">
         <h1 className="font-display font-bold text-xl text-text-primary tracking-tight">Settings</h1>
         <p className="text-sm text-text-muted mt-1.5">
@@ -187,15 +187,15 @@ export default function Settings() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-5 overflow-x-auto pb-1 border-b border-border/50">
+      <div className="settings-tab-list mb-5">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-3 text-xs whitespace-nowrap transition-all duration-200 border-b-2 -mb-px ${
+            className={`settings-tab-button ${
               tab === t.id
-                ? 'text-teal border-teal'
-                : 'text-text-muted border-transparent hover:text-text-primary'
+                ? 'settings-tab-button-active'
+                : 'settings-tab-button-idle'
             }`}
           >
             <span className="text-sm">{t.icon}</span>
@@ -328,12 +328,12 @@ function ModelSwitcherPanel({ connectedProviders }) {
 
   return (
     <div className="card mb-4" style={{ borderColor: 'rgba(96,165,250,0.2)', background: 'rgba(96,165,250,0.03)' }}>
-      <div className="flex items-center justify-between mb-4">
-        <div>
+      <div className="settings-model-header">
+        <div className="min-w-0">
           <p className="text-xs font-display font-semibold text-text-primary uppercase tracking-wider">Active AI Model</p>
           <p className="text-xs text-text-muted mt-0.5">Used for plan generation, chat, and digests</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)' }}>
+        <div className="settings-active-model" style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)' }}>
           <span className="text-xs font-mono text-blue-400">{active.model}</span>
           {saving && <span className="text-xs text-text-muted">saving…</span>}
         </div>
@@ -346,7 +346,7 @@ function ModelSwitcherPanel({ connectedProviders }) {
           return (
             <div key={provider}>
               <p className="text-[10px] text-text-muted uppercase tracking-widest mb-2 font-mono">{providerLabel}</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="settings-model-grid">
                 {models.map(m => {
                   const isActive = active.provider === provider && active.model === m.id;
                   const tierColor = TIER_COLORS[m.tier] || '#64748B';
@@ -359,7 +359,6 @@ function ModelSwitcherPanel({ connectedProviders }) {
                       style={{
                         borderColor: isActive ? tierColor + '60' : '#252540',
                         background:  isActive ? tierColor + '12' : 'rgba(20,20,36,0.5)',
-                        minWidth: '120px',
                       }}
                     >
                       <div className="flex items-center gap-1.5">
@@ -686,11 +685,11 @@ function IntegrationsTab() {
               className="w-full flex items-center justify-between px-1 py-2 mb-3 group"
               onClick={() => toggleCategory(cat.id)}
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <span className="text-base">{cat.icon}</span>
-                <div className="text-left">
+                <div className="settings-category-copy">
                   <span className="font-display font-semibold text-sm text-text-primary">{cat.label}</span>
-                  <span className="ml-2 text-xs text-text-muted">{cat.description}</span>
+                  <span className="text-xs text-text-muted">{cat.description}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2.5">

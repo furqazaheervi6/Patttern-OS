@@ -3,6 +3,7 @@ client/node_modules/
 .env
 .env.local
 .env.vercel
+.env.vercel.local
 token.json
 credentials.json
 *.db
